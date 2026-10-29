@@ -1,0 +1,16 @@
+{
+  "name": "rb-scrape",
+  "version": "1.0.0",
+  "description": "Scrape The Royal Bakery ordering portal (trbsys.net)",
+  "type": "module",
+  "scripts": {
+    "scrape": "node scrape.js",
+    "postinstall": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.1",
+    "playwright": "^1.54.2",
+    "xlsx": "^0.18.5"
+  }
+}
