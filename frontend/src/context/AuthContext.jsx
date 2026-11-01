@@ -61,7 +61,12 @@ export function AuthProvider({ children }) {
         return { success: true, user: res.data.user };
       }
     } catch (err) {
-      const message = err.response?.data?.error || 'Login failed. Please check your credentials.';
+      let message = 'Login failed. Please check your credentials.';
+      if (err.response?.data?.error) {
+        message = err.response.data.error;
+      } else if (!err.response) {
+        message = '⚠️ Backend API Server is offline (Cannot reach http://localhost:5000). Please start the backend server.';
+      }
       setAuthError(message);
       return { success: false, error: message };
     }
@@ -100,3 +105,4 @@ export function useAuth() {
   }
   return context;
 }
+
