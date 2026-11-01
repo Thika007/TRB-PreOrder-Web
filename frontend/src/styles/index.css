@@ -167,6 +167,15 @@ button, input, select, textarea {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  /* Hide scrollbar completely across all browsers */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+  width: 0px;
+  background: transparent;
 }
 
 .nav-section-title {
@@ -545,4 +554,24 @@ button, input, select, textarea {
 .badge-ready { background-color: var(--status-ready-bg); color: var(--status-ready-text); }
 .badge-delivered { background-color: var(--status-delivered-bg); color: var(--status-delivered-text); }
 .badge-cancelled { background-color: var(--status-cancelled-bg); color: var(--status-cancelled-text); }
+
+/* Global Sleek Modern Scrollbar (For tables and modals) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 
