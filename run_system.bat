@@ -24,3 +24,4 @@ echo ========================================================
 echo System launched successfully!
 echo Do not close the Backend and Frontend command windows.
 echo ========================================================
+

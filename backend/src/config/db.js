@@ -55,7 +55,7 @@ async function getPool() {
 async function executeQuery(queryText, params = []) {
     const pool = await getPool();
     const request = pool.request();
-    
+
     if (Array.isArray(params)) {
         params.forEach(param => {
             request.input(param.name, param.type, param.value);
