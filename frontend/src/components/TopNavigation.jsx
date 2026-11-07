@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutGrid, 
@@ -17,9 +17,6 @@ export default function TopNavigation() {
   const { user, logout } = useAuth();
 
   const [time, setTime] = useState(new Date());
-  const [openDropdown, setOpenDropdown] = useState(null);
-  const [openSubmenu, setOpenSubmenu] = useState(null);
-  const closeTimerRef = useRef(null);
 
   // Live Digital Clock
   useEffect(() => {
@@ -27,43 +24,11 @@ export default function TopNavigation() {
     return () => clearInterval(timer);
   }, []);
 
-  // Close dropdown on route change
-  useEffect(() => {
-    setOpenDropdown(null);
-    setOpenSubmenu(null);
-  }, [location.pathname]);
-
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out of your counter session?')) {
       logout();
       navigate('/login');
     }
-  };
-
-  // Mouse Enter Main Dropdown
-  const handleDropdownEnter = (menuName) => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setOpenDropdown(menuName);
-  };
-
-  // Mouse Leave Main Dropdown (with grace buffer so it doesn't snap shut)
-  const handleDropdownLeave = () => {
-    closeTimerRef.current = setTimeout(() => {
-      setOpenDropdown(null);
-      setOpenSubmenu(null);
-    }, 180);
-  };
-
-  // Submenu enter
-  const handleSubmenuEnter = (subName) => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    setOpenSubmenu(subName);
   };
 
   // Check active routes
@@ -167,121 +132,77 @@ export default function TopNavigation() {
           </NavLink>
 
           {/* 2. MAIN ACCESS (Dropdown with Flyouts) */}
-          <div 
-            className={`sub-nav-tab dropdown-parent ${isMainAccessActive ? 'active' : ''} ${openDropdown === 'mainAccess' ? 'hovered' : ''}`}
-            onMouseEnter={() => handleDropdownEnter('mainAccess')}
-            onMouseLeave={handleDropdownLeave}
-          >
+          <div className={`sub-nav-tab dropdown-parent ${isMainAccessActive ? 'active' : ''}`}>
             <div className="sub-nav-icon">
               <Info size={18} />
             </div>
             <span className="sub-nav-label">Main Access</span>
 
-            {/* Level 1 Dropdown */}
-            {openDropdown === 'mainAccess' && (
-              <div 
-                className="dropdown-panel"
-                onMouseEnter={() => handleDropdownEnter('mainAccess')}
-                onMouseLeave={handleDropdownLeave}
-              >
-                {/* System Users (with nested flyout) */}
-                <div 
-                  className={`dropdown-menu-row has-flyout ${openSubmenu === 'systemUsers' ? 'flyout-open' : ''}`}
-                  onMouseEnter={() => handleSubmenuEnter('systemUsers')}
-                >
-                  <span className="row-text">System Users</span>
-                  <span className="row-chevron">&gt;</span>
+            {/* Level 1 Dropdown Panel */}
+            <div className="dropdown-panel">
+              {/* System Users (with nested flyout) */}
+              <div className="dropdown-menu-row has-flyout">
+                <span className="row-text">System Users</span>
+                <span className="row-chevron">&gt;</span>
 
-                  {/* Level 2 Flyout Menu */}
-                  {openSubmenu === 'systemUsers' && (
-                    <div 
-                      className="flyout-panel"
-                      onMouseEnter={() => handleSubmenuEnter('systemUsers')}
-                    >
-                      <NavLink to="/create-users" className="flyout-item">
-                        Create User
-                      </NavLink>
-                      <NavLink to="/manage-users" className="flyout-item">
-                        Manage Users
-                      </NavLink>
-                    </div>
-                  )}
+                {/* Level 2 Flyout Menu */}
+                <div className="flyout-panel">
+                  <NavLink to="/create-users" className="flyout-item">
+                    Create User
+                  </NavLink>
+                  <NavLink to="/manage-users" className="flyout-item">
+                    Manage Users
+                  </NavLink>
                 </div>
-
-                {/* Manage Product */}
-                <NavLink 
-                  to="/add-product" 
-                  className="dropdown-menu-row"
-                  onMouseEnter={() => handleSubmenuEnter(null)}
-                >
-                  <span className="row-text">Manage Product</span>
-                </NavLink>
-
-                {/* Product Categories (with nested flyout) */}
-                <div 
-                  className={`dropdown-menu-row has-flyout ${openSubmenu === 'categories' ? 'flyout-open' : ''}`}
-                  onMouseEnter={() => handleSubmenuEnter('categories')}
-                >
-                  <span className="row-text">Product Categories</span>
-                  <span className="row-chevron">&gt;</span>
-
-                  {/* Level 2 Flyout Menu */}
-                  {openSubmenu === 'categories' && (
-                    <div 
-                      className="flyout-panel"
-                      onMouseEnter={() => handleSubmenuEnter('categories')}
-                    >
-                      <NavLink to="/manage-categories" className="flyout-item">
-                        Main Categories
-                      </NavLink>
-                      <NavLink to="/manage-sub-categories" className="flyout-item">
-                        Sub Categories
-                      </NavLink>
-                    </div>
-                  )}
-                </div>
-
-                {/* Customer List */}
-                <NavLink 
-                  to="/customer_list" 
-                  className="dropdown-menu-row"
-                  onMouseEnter={() => handleSubmenuEnter(null)}
-                >
-                  <span className="row-text">Customer List</span>
-                </NavLink>
               </div>
-            )}
+
+              {/* Manage Product */}
+              <NavLink to="/add-product" className="dropdown-menu-row">
+                <span className="row-text">Manage Product</span>
+              </NavLink>
+
+              {/* Product Categories (with nested flyout) */}
+              <div className="dropdown-menu-row has-flyout">
+                <span className="row-text">Product Categories</span>
+                <span className="row-chevron">&gt;</span>
+
+                {/* Level 2 Flyout Menu */}
+                <div className="flyout-panel">
+                  <NavLink to="/manage-categories" className="flyout-item">
+                    Main Categories
+                  </NavLink>
+                  <NavLink to="/manage-sub-categories" className="flyout-item">
+                    Sub Categories
+                  </NavLink>
+                </div>
+              </div>
+
+              {/* Customer List */}
+              <NavLink to="/customer_list" className="dropdown-menu-row">
+                <span className="row-text">Customer List</span>
+              </NavLink>
+            </div>
           </div>
 
           {/* 3. ORDERS (Dropdown) */}
-          <div 
-            className={`sub-nav-tab dropdown-parent ${isOrdersActive ? 'active' : ''} ${openDropdown === 'orders' ? 'hovered' : ''}`}
-            onMouseEnter={() => handleDropdownEnter('orders')}
-            onMouseLeave={handleDropdownLeave}
-          >
+          <div className={`sub-nav-tab dropdown-parent ${isOrdersActive ? 'active' : ''}`}>
             <div className="sub-nav-icon">
               <Building2 size={18} />
             </div>
             <span className="sub-nav-label">Orders</span>
 
-            {/* Level 1 Dropdown */}
-            {openDropdown === 'orders' && (
-              <div 
-                className="dropdown-panel"
-                onMouseEnter={() => handleDropdownEnter('orders')}
-                onMouseLeave={handleDropdownLeave}
-              >
-                <NavLink to="/manage_orders" className="dropdown-menu-row">
-                  <span className="row-text">Manage Orders</span>
-                </NavLink>
-                <NavLink to="/cancel_orders" className="dropdown-menu-row">
-                  <span className="row-text">Cancelled Orders</span>
-                </NavLink>
-                <NavLink to="/bill_authorized" className="dropdown-menu-row">
-                  <span className="row-text">Authorize</span>
-                </NavLink>
-              </div>
-            )}
+            {/* Level 1 Dropdown Panel */}
+            <div className="dropdown-panel">
+              <NavLink to="/manage_orders" className="dropdown-menu-row">
+                <span className="row-text">Manage Orders</span>
+              </NavLink>
+              <NavLink to="/cancel_orders" className="dropdown-menu-row">
+                <span className="row-text">Cancelled Orders</span>
+              </NavLink>
+              <NavLink to="/bill_authorized" className="dropdown-menu-row">
+                <span className="row-text">Authorize</span>
+              </NavLink>
+            </div>
           </div>
 
           {/* 4. AUTHORIZE BILLS */}
@@ -318,81 +239,51 @@ export default function TopNavigation() {
           </NavLink>
 
           {/* 7. REPORTS (Dropdown with Flyouts) */}
-          <div 
-            className={`sub-nav-tab dropdown-parent ${isReportsActive ? 'active' : ''} ${openDropdown === 'reports' ? 'hovered' : ''}`}
-            onMouseEnter={() => handleDropdownEnter('reports')}
-            onMouseLeave={handleDropdownLeave}
-          >
+          <div className={`sub-nav-tab dropdown-parent ${isReportsActive ? 'active' : ''}`}>
             <div className="sub-nav-icon">
               <DollarSign size={18} />
             </div>
             <span className="sub-nav-label">Reports</span>
 
-            {/* Level 1 Dropdown */}
-            {openDropdown === 'reports' && (
-              <div 
-                className="dropdown-panel"
-                onMouseEnter={() => handleDropdownEnter('reports')}
-                onMouseLeave={handleDropdownLeave}
-              >
-                {/* By Invoice (with nested flyout) */}
-                <div 
-                  className={`dropdown-menu-row has-flyout ${openSubmenu === 'byInvoice' ? 'flyout-open' : ''}`}
-                  onMouseEnter={() => handleSubmenuEnter('byInvoice')}
-                >
-                  <span className="row-text">By Invoice</span>
-                  <span className="row-chevron">&gt;</span>
+            {/* Level 1 Dropdown Panel */}
+            <div className="dropdown-panel">
+              {/* By Invoice (with nested flyout) */}
+              <div className="dropdown-menu-row has-flyout">
+                <span className="row-text">By Invoice</span>
+                <span className="row-chevron">&gt;</span>
 
-                  {/* Level 2 Flyout Menu */}
-                  {openSubmenu === 'byInvoice' && (
-                    <div 
-                      className="flyout-panel"
-                      onMouseEnter={() => handleSubmenuEnter('byInvoice')}
-                    >
-                      <NavLink to="/reports_all" className="flyout-item">
-                        All Report
-                      </NavLink>
-                      <NavLink to="/overall-invoices" className="flyout-item">
-                        Overall Invoices
-                      </NavLink>
-                    </div>
-                  )}
+                {/* Level 2 Flyout Menu */}
+                <div className="flyout-panel">
+                  <NavLink to="/reports_all" className="flyout-item">
+                    All Report
+                  </NavLink>
+                  <NavLink to="/overall-invoices" className="flyout-item">
+                    Overall Invoices
+                  </NavLink>
                 </div>
-
-                {/* By Product (with nested flyout) */}
-                <div 
-                  className={`dropdown-menu-row has-flyout ${openSubmenu === 'byProduct' ? 'flyout-open' : ''}`}
-                  onMouseEnter={() => handleSubmenuEnter('byProduct')}
-                >
-                  <span className="row-text">By Product</span>
-                  <span className="row-chevron">&gt;</span>
-
-                  {/* Level 2 Flyout Menu */}
-                  {openSubmenu === 'byProduct' && (
-                    <div 
-                      className="flyout-panel"
-                      onMouseEnter={() => handleSubmenuEnter('byProduct')}
-                    >
-                      <NavLink to="/reports_products_only" className="flyout-item">
-                        All Product Sales
-                      </NavLink>
-                      <NavLink to="/reports-overall" className="flyout-item">
-                        Overall
-                      </NavLink>
-                    </div>
-                  )}
-                </div>
-
-                {/* By Payment */}
-                <NavLink 
-                  to="/all-payment" 
-                  className="dropdown-menu-row"
-                  onMouseEnter={() => handleSubmenuEnter(null)}
-                >
-                  <span className="row-text">By Payment</span>
-                </NavLink>
               </div>
-            )}
+
+              {/* By Product (with nested flyout) */}
+              <div className="dropdown-menu-row has-flyout">
+                <span className="row-text">By Product</span>
+                <span className="row-chevron">&gt;</span>
+
+                {/* Level 2 Flyout Menu */}
+                <div className="flyout-panel">
+                  <NavLink to="/reports_products_only" className="flyout-item">
+                    All Product Sales
+                  </NavLink>
+                  <NavLink to="/reports-overall" className="flyout-item">
+                    Overall
+                  </NavLink>
+                </div>
+              </div>
+
+              {/* By Payment */}
+              <NavLink to="/all-payment" className="dropdown-menu-row">
+                <span className="row-text">By Payment</span>
+              </NavLink>
+            </div>
           </div>
 
           {/* 8. SMS PROMOTIONS */}
