@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Database, 
   Clock, 
   User, 
-  PlusCircle, 
-  ChefHat, 
   LogOut 
 } from 'lucide-react';
-import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
 export default function Navbar() {
@@ -17,36 +13,11 @@ export default function Navbar() {
   const { user, logout } = useAuth();
 
   const [time, setTime] = useState(new Date());
-  const [dbStatus, setDbStatus] = useState('Checking...');
-  const [dbConnected, setDbConnected] = useState(false);
 
   // Live Digital Clock
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Live Database Connectivity Heartbeat
-  useEffect(() => {
-    const checkDb = async () => {
-      try {
-        const res = await axios.get('/api/health');
-        if (res.data.status === 'online') {
-          setDbStatus('MSSQL 2019 Active');
-          setDbConnected(true);
-        } else {
-          setDbStatus('DB Degraded');
-          setDbConnected(false);
-        }
-      } catch (err) {
-        setDbStatus('DB Disconnected');
-        setDbConnected(false);
-      }
-    };
-
-    checkDb();
-    const interval = setInterval(checkDb, 15000); // Check every 15s
-    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -94,34 +65,6 @@ export default function Navbar() {
       </div>
 
       <div className="navbar-right">
-        {/* Quick Action: New Order */}
-        <button 
-          className="btn btn-primary"
-          onClick={() => navigate('/add-order')}
-          title="F1 - New Pre-Order"
-        >
-          <PlusCircle size={16} />
-          <span>New Order</span>
-          <span style={{ fontSize: '11px', opacity: 0.85, marginLeft: '2px' }}>(F1)</span>
-        </button>
-
-        {/* Quick Action: Chef Sheet */}
-        <button 
-          className="btn btn-secondary"
-          onClick={() => navigate('/reports_cheff')}
-          title="F4 - Chef Baking Sheet"
-        >
-          <ChefHat size={16} />
-          <span>Kitchen Sheet</span>
-        </button>
-
-        {/* MSSQL Connection Heartbeat Badge */}
-        <div className={`db-status-badge ${dbConnected ? 'connected' : ''}`}>
-          <div className="status-dot"></div>
-          <Database size={13} />
-          <span>{dbStatus}</span>
-        </div>
-
         {/* Live Digital Clock */}
         <div className="clock-display">
           <Clock size={13} style={{ display: 'inline', marginRight: '6px', verticalAlign: '-1px' }} />
