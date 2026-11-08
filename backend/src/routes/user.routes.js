@@ -240,3 +240,4 @@ router.delete('/:id', authenticateToken, requireRole(['Admin']), async (req, res
 });
 
 module.exports = router;
+

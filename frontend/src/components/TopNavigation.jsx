@@ -140,8 +140,14 @@ export default function TopNavigation() {
 
             {/* Level 1 Dropdown Panel */}
             <div className="dropdown-panel">
-              {/* System Users (with nested flyout) */}
-              <div className="dropdown-menu-row has-flyout">
+              {/* System Users (with nested flyout - clicking row navigates to /manage-users) */}
+              <div 
+                className={`dropdown-menu-row has-flyout ${['/manage-users', '/create-users'].includes(location.pathname) ? 'active' : ''}`}
+                onClick={(e) => {
+                  if (e.target.closest('.flyout-panel')) return;
+                  navigate('/manage-users');
+                }}
+              >
                 <span className="row-text">System Users</span>
                 <span className="row-chevron">&gt;</span>
 
@@ -161,8 +167,14 @@ export default function TopNavigation() {
                 <span className="row-text">Manage Product</span>
               </NavLink>
 
-              {/* Product Categories (with nested flyout) */}
-              <div className="dropdown-menu-row has-flyout">
+              {/* Product Categories (with nested flyout - clicking row navigates to /manage-categories) */}
+              <div 
+                className={`dropdown-menu-row has-flyout ${['/manage-categories', '/manage-sub-categories'].includes(location.pathname) ? 'active' : ''}`}
+                onClick={(e) => {
+                  if (e.target.closest('.flyout-panel')) return;
+                  navigate('/manage-categories');
+                }}
+              >
                 <span className="row-text">Product Categories</span>
                 <span className="row-chevron">&gt;</span>
 
@@ -247,8 +259,14 @@ export default function TopNavigation() {
 
             {/* Level 1 Dropdown Panel */}
             <div className="dropdown-panel">
-              {/* By Invoice (with nested flyout) */}
-              <div className="dropdown-menu-row has-flyout">
+              {/* By Invoice (with nested flyout - clicking row navigates to /reports_all) */}
+              <div 
+                className={`dropdown-menu-row has-flyout ${['/reports_all', '/overall-invoices'].includes(location.pathname) ? 'active' : ''}`}
+                onClick={(e) => {
+                  if (e.target.closest('.flyout-panel')) return;
+                  navigate('/reports_all');
+                }}
+              >
                 <span className="row-text">By Invoice</span>
                 <span className="row-chevron">&gt;</span>
 
@@ -263,8 +281,14 @@ export default function TopNavigation() {
                 </div>
               </div>
 
-              {/* By Product (with nested flyout) */}
-              <div className="dropdown-menu-row has-flyout">
+              {/* By Product (with nested flyout - clicking row navigates to /reports_products_only) */}
+              <div 
+                className={`dropdown-menu-row has-flyout ${['/reports_products_only', '/reports-overall'].includes(location.pathname) ? 'active' : ''}`}
+                onClick={(e) => {
+                  if (e.target.closest('.flyout-panel')) return;
+                  navigate('/reports_products_only');
+                }}
+              >
                 <span className="row-text">By Product</span>
                 <span className="row-chevron">&gt;</span>
 

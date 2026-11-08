@@ -876,7 +876,8 @@ button, input, select, textarea {
 }
 
 .dropdown-menu-row:hover,
-.dropdown-menu-row.flyout-open {
+.dropdown-menu-row.flyout-open,
+.dropdown-menu-row.active {
   color: #14b8a6;
   background-color: #f9fafb;
 }
@@ -894,7 +895,8 @@ button, input, select, textarea {
 }
 
 .dropdown-menu-row:hover .row-chevron,
-.dropdown-menu-row.flyout-open .row-chevron {
+.dropdown-menu-row.flyout-open .row-chevron,
+.dropdown-menu-row.active .row-chevron {
   color: #14b8a6;
 }
 
