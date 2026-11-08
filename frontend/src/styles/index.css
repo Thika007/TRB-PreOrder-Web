@@ -636,6 +636,18 @@ button, input, select, textarea {
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
+  padding: 0 !important;
+}
+
+.shortcut-bar-inner {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 /* TOP NAVIGATION CONTAINER */
@@ -651,12 +663,20 @@ button, input, select, textarea {
 .top-brand-bar {
   background-color: #0f172a;
   height: 56px;
+  width: 100%;
+  color: #ffffff;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.top-brand-inner {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0 32px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
-  color: #ffffff;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .brand-left {
@@ -799,12 +819,16 @@ button, input, select, textarea {
   background-color: #ffffff;
   border-bottom: 1px solid #e2e8f0;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
-  padding: 0 32px;
+  width: 100%;
   position: relative;
   overflow: visible !important;
 }
 
 .sub-nav-inner {
+  width: 100%;
+  max-width: 1560px;
+  margin: 0 auto;
+  padding: 0 32px;
   display: flex;
   align-items: center;
   gap: 30px;

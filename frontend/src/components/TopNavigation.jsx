@@ -63,54 +63,56 @@ export default function TopNavigation() {
           TIER 1: PRIMARY BRAND & USER HEADER (Dark Navy Theme)
           ======================================================== */}
       <div className="top-brand-bar">
-        <div className="brand-left">
-          <div className="brand-title-wrap" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>
-            <span className="brand-main-text">THE ROYAL BAKERY</span>
-            <span className="brand-tagline">PRE-ORDER & PRODUCTION POS</span>
-          </div>
-        </div>
-
-        <div className="brand-right">
-          {/* Live Digital Clock */}
-          <div className="clock-pill">
-            <Clock size={13} className="clock-icon" />
-            <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-          </div>
-
-          {/* Active Staff Station Profile */}
-          <div className="staff-pill">
-            <div className="staff-avatar">
-              <User size={14} />
-            </div>
-            <div className="staff-info">
-              <span className="staff-name">{user?.full_name || 'System Administrator'}</span>
-              <span className="staff-role">{user?.user_role || 'Admin'} Station</span>
+        <div className="top-brand-inner">
+          <div className="brand-left">
+            <div className="brand-title-wrap" onClick={() => navigate('/dashboard')} style={{ cursor: 'pointer' }}>
+              <span className="brand-main-text">THE ROYAL BAKERY</span>
+              <span className="brand-tagline">PRE-ORDER & PRODUCTION POS</span>
             </div>
           </div>
 
-          {/* Red & Gold Circular "RB" Monogram Emblem */}
-          <div className="rb-emblem-badge" title="The Royal Bakery - Est. 1906">
-            <img 
-              src="/logo.webp" 
-              alt="The Royal Bakery" 
-              style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
-              onError={(e) => {
-                e.currentTarget.style.display = 'none';
-                if (e.currentTarget.parentElement) {
-                  e.currentTarget.parentElement.innerHTML = '<span class="rb-emblem-text">RB</span>';
-                }
-              }} 
-            />
-          </div>
+          <div className="brand-right">
+            {/* Live Digital Clock */}
+            <div className="clock-pill">
+              <Clock size={13} className="clock-icon" />
+              <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+            </div>
 
-          {/* Logout Action */}
-          <button 
-            className="top-logout-btn" 
-            onClick={handleLogout}
-            title="Log Out of POS Session"
-          >
-            <LogOut size={17} />
-          </button>
+            {/* Active Staff Station Profile */}
+            <div className="staff-pill">
+              <div className="staff-avatar">
+                <User size={14} />
+              </div>
+              <div className="staff-info">
+                <span className="staff-name">{user?.full_name || 'System Administrator'}</span>
+                <span className="staff-role">{user?.user_role || 'Admin'} Station</span>
+              </div>
+            </div>
+
+            {/* Red & Gold Circular "RB" Monogram Emblem */}
+            <div className="rb-emblem-badge" title="The Royal Bakery - Est. 1906">
+              <img 
+                src="/logo.webp" 
+                alt="The Royal Bakery" 
+                style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.parentElement) {
+                    e.currentTarget.parentElement.innerHTML = '<span class="rb-emblem-text">RB</span>';
+                  }
+                }} 
+              />
+            </div>
+
+            {/* Logout Action */}
+            <button 
+              className="top-logout-btn" 
+              onClick={handleLogout}
+              title="Log Out of POS Session"
+            >
+              <LogOut size={17} />
+            </button>
+          </div>
         </div>
       </div>
 

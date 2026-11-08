@@ -41,28 +41,30 @@ export default function Layout() {
 
       {/* Fixed Bottom Keyboard Shortcuts Bar */}
       <footer className="shortcut-bar full-width-shortcut-bar">
-        <div className="shortcuts-group">
-          <span style={{ fontWeight: 600, color: '#e2e8f0' }}>Counter Hotkeys:</span>
-          <div className="shortcut-item">
-            <span className="key-cap">F1</span>
-            <span>New Order</span>
+        <div className="shortcut-bar-inner">
+          <div className="shortcuts-group">
+            <span style={{ fontWeight: 600, color: '#e2e8f0' }}>Counter Hotkeys:</span>
+            <div className="shortcut-item">
+              <span className="key-cap">F1</span>
+              <span>New Order</span>
+            </div>
+            <div className="shortcut-item">
+              <span className="key-cap">F2</span>
+              <span>Customer Search</span>
+            </div>
+            <div className="shortcut-item">
+              <span className="key-cap">F4</span>
+              <span>Kitchen Sheet</span>
+            </div>
+            <div className="shortcut-item">
+              <span className="key-cap">Esc</span>
+              <span>Close / Clear</span>
+            </div>
           </div>
-          <div className="shortcut-item">
-            <span className="key-cap">F2</span>
-            <span>Customer Search</span>
-          </div>
-          <div className="shortcut-item">
-            <span className="key-cap">F4</span>
-            <span>Kitchen Sheet</span>
-          </div>
-          <div className="shortcut-item">
-            <span className="key-cap">Esc</span>
-            <span>Close / Clear</span>
-          </div>
-        </div>
 
-        <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-          <span>Local MSSQL Express | 100% Offline Resilient</span>
+          <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+            <span>Local MSSQL Express | 100% Offline Resilient</span>
+          </div>
         </div>
       </footer>
     </div>
