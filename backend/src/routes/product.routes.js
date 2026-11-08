@@ -2,27 +2,259 @@ const express = require('express');
 const router = express.Router();
 const { sql, executeQuery } = require('../config/db');
 
-// =========================================================================
-// 1. GET MAIN PRODUCT CATEGORIES
-// Corresponds to Menu 2.4: Main Categories (/manage-categories) [Screenshot #05]
-// =========================================================================
-router.get('/categories', async (req, res) => {
+// Helper to record audit logs
+async function logAuditEvent(actionType, userId, description, ipAddress) {
     try {
         const query = `
-            SELECT main_cat_id, category_name, chef_description, display_order, is_active
-            FROM dbo.MainCategories
-            WHERE is_active = 1
-            ORDER BY display_order ASC, category_name ASC
+            INSERT INTO dbo.AuditLogs (action_type, user_id, description, ip_address, log_time)
+            VALUES (@actionType, @userId, @description, @ipAddress, GETDATE())
         `;
-        const result = await executeQuery(query);
-        res.json({ success: true, categories: result.recordset });
+        const params = [
+            { name: 'actionType', type: sql.VarChar(50), value: actionType },
+            { name: 'userId', type: sql.Int, value: userId || null },
+            { name: 'description', type: sql.NVarChar(sql.MAX), value: description },
+            { name: 'ipAddress', type: sql.VarChar(50), value: ipAddress || '127.0.0.1' }
+        ];
+        await executeQuery(query, params);
+    } catch (err) {
+        console.error('Audit Log Error:', err.message);
+    }
+}
+
+// Helper to calculate the next MCAT ID (e.g. MCAT9)
+async function getNextCategoryId() {
+    const res = await executeQuery('SELECT main_cat_id FROM dbo.MainCategories');
+    let maxNum = 0;
+    (res.recordset || []).forEach(r => {
+        const match = (r.main_cat_id || '').match(/MCAT(\d+)/i);
+        if (match) {
+            const num = parseInt(match[1], 10);
+            if (num > maxNum) maxNum = num;
+        }
+    });
+    return `MCAT${maxNum + 1}`;
+}
+
+// =========================================================================
+// 1. GET NEXT MAIN CATEGORY ID (e.g. MCAT9)
+// =========================================================================
+router.get('/categories/next-id', async (req, res) => {
+    try {
+        const nextId = await getNextCategoryId();
+        res.json({ success: true, next_cat_id: nextId });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 // =========================================================================
-// 2. GET SUB CATEGORIES (Optional filter by main_cat_id)
+// 2. GET MAIN PRODUCT CATEGORIES
+// Corresponds to Menu 2.4: Main Categories (/manage-categories) [Screenshot #05]
+// =========================================================================
+router.get('/categories', async (req, res) => {
+    try {
+        const includeInactive = req.query.include_inactive === 'true' || req.query.all === 'true';
+        let query = `
+            SELECT main_cat_id, category_name, chef_description, display_order, is_active, created_at
+            FROM dbo.MainCategories
+        `;
+        if (!includeInactive) {
+            query += ` WHERE is_active = 1`;
+        }
+        query += ` ORDER BY display_order ASC, main_cat_id ASC`;
+        const result = await executeQuery(query);
+
+        // Sort numerically by MCAT number
+        const sorted = (result.recordset || []).sort((a, b) => {
+            const numA = parseInt((a.main_cat_id || '').replace(/\D/g, ''), 10) || 0;
+            const numB = parseInt((b.main_cat_id || '').replace(/\D/g, ''), 10) || 0;
+            return numA - numB;
+        });
+
+        res.json({ success: true, count: sorted.length, categories: sorted });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 3. CREATE NEW MAIN CATEGORY
+// Corresponds to FEED MAIN CATEGORIES form (/manage-categories)
+// =========================================================================
+router.post('/categories', async (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    try {
+        let { main_cat_id, category_name, chef_description } = req.body;
+
+        if (!category_name || !category_name.trim()) {
+            return res.status(400).json({ success: false, error: 'Main Category name is required.' });
+        }
+
+        const cleanName = category_name.trim();
+        const cleanDesc = chef_description && chef_description.trim() ? chef_description.trim() : null;
+
+        if (!main_cat_id || !main_cat_id.trim()) {
+            main_cat_id = await getNextCategoryId();
+        } else {
+            main_cat_id = main_cat_id.trim().toUpperCase();
+        }
+
+        // Check duplicate ID
+        const checkId = await executeQuery(
+            'SELECT main_cat_id FROM dbo.MainCategories WHERE UPPER(main_cat_id) = @id',
+            [{ name: 'id', type: sql.VarChar(20), value: main_cat_id }]
+        );
+        if (checkId.recordset.length > 0) {
+            return res.status(409).json({ success: false, error: `Category ID "${main_cat_id}" already exists.` });
+        }
+
+        // Calculate next display_order
+        const orderRes = await executeQuery('SELECT ISNULL(MAX(display_order), 0) + 1 AS next_order FROM dbo.MainCategories');
+        const nextOrder = orderRes.recordset[0]?.next_order || 1;
+
+        const insertQuery = `
+            INSERT INTO dbo.MainCategories (main_cat_id, category_name, chef_description, display_order, is_active, created_at)
+            OUTPUT INSERTED.*
+            VALUES (@main_cat_id, @category_name, @chef_description, @display_order, 1, GETDATE())
+        `;
+        const params = [
+            { name: 'main_cat_id', type: sql.VarChar(20), value: main_cat_id },
+            { name: 'category_name', type: sql.VarChar(100), value: cleanName },
+            { name: 'chef_description', type: sql.NVarChar(200), value: cleanDesc },
+            { name: 'display_order', type: sql.Int, value: nextOrder }
+        ];
+
+        const result = await executeQuery(insertQuery, params);
+        const newCategory = result.recordset[0];
+
+        await logAuditEvent(
+            'CATEGORY_CREATED', 
+            null, 
+            `Created Main Category "${cleanName}" (${main_cat_id}) with supervisor/chef "${cleanDesc || 'None'}"`, 
+            clientIp
+        );
+
+        console.log(`✅ [Category Master] New category registered: ${main_cat_id} - ${cleanName}`);
+
+        res.status(201).json({
+            success: true,
+            message: `Main Category "${cleanName}" (${main_cat_id}) created successfully.`,
+            category: newCategory
+        });
+    } catch (error) {
+        console.error('Create Category Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 4. UPDATE EXISTING MAIN CATEGORY
+// =========================================================================
+router.put('/categories/:id', async (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    try {
+        const catId = req.params.id.trim();
+        const { category_name, chef_description, is_active } = req.body;
+
+        if (!category_name || !category_name.trim()) {
+            return res.status(400).json({ success: false, error: 'Main Category name is required.' });
+        }
+
+        const cleanName = category_name.trim();
+        const cleanDesc = chef_description && chef_description.trim() ? chef_description.trim() : null;
+
+        const updateQuery = `
+            UPDATE dbo.MainCategories
+            SET category_name = @category_name,
+                chef_description = @chef_description,
+                is_active = ISNULL(@is_active, is_active)
+            OUTPUT INSERTED.*
+            WHERE main_cat_id = @id
+        `;
+        const params = [
+            { name: 'category_name', type: sql.VarChar(100), value: cleanName },
+            { name: 'chef_description', type: sql.NVarChar(200), value: cleanDesc },
+            { name: 'is_active', type: sql.Bit, value: is_active !== undefined ? (is_active ? 1 : 0) : null },
+            { name: 'id', type: sql.VarChar(20), value: catId }
+        ];
+
+        const result = await executeQuery(updateQuery, params);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, error: `Category "${catId}" not found.` });
+        }
+
+        await logAuditEvent(
+            'CATEGORY_UPDATED', 
+            null, 
+            `Updated Main Category "${catId}" -> Name: "${cleanName}", Chef/Supervisor: "${cleanDesc || 'None'}"`, 
+            clientIp
+        );
+
+        res.json({
+            success: true,
+            message: `Category "${catId}" updated successfully.`,
+            category: result.recordset[0]
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 5. DELETE / DEACTIVATE MAIN CATEGORY
+// =========================================================================
+router.delete('/categories/:id', async (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    try {
+        const catId = req.params.id.trim();
+
+        // Check if subcategories exist
+        const subCheck = await executeQuery('SELECT COUNT(*) AS cnt FROM dbo.SubCategories WHERE main_cat_id = @id', [
+            { name: 'id', type: sql.VarChar(20), value: catId }
+        ]);
+        const subCount = subCheck.recordset[0]?.cnt || 0;
+
+        // Check if products exist
+        const prodCheck = await executeQuery('SELECT COUNT(*) AS cnt FROM dbo.Products WHERE main_cat_id = @id', [
+            { name: 'id', type: sql.VarChar(20), value: catId }
+        ]);
+        const prodCount = prodCheck.recordset[0]?.cnt || 0;
+
+        if (subCount > 0 || prodCount > 0) {
+            // Soft-deactivate to preserve database relations
+            await executeQuery('UPDATE dbo.MainCategories SET is_active = 0 WHERE main_cat_id = @id', [
+                { name: 'id', type: sql.VarChar(20), value: catId }
+            ]);
+            await logAuditEvent(
+                'CATEGORY_DEACTIVATED', 
+                null, 
+                `Deactivated category "${catId}" (Contains ${subCount} subcategories and ${prodCount} products)`, 
+                clientIp
+            );
+
+            return res.json({
+                success: true,
+                message: `Category "${catId}" is associated with ${subCount} subcategory items and ${prodCount} products. Category deactivated instead of permanent deletion.`
+            });
+        }
+
+        // Hard delete if clean
+        await executeQuery('DELETE FROM dbo.MainCategories WHERE main_cat_id = @id', [
+            { name: 'id', type: sql.VarChar(20), value: catId }
+        ]);
+        await logAuditEvent('CATEGORY_DELETED', null, `Permanently removed category "${catId}"`, clientIp);
+
+        res.json({
+            success: true,
+            message: `Category "${catId}" permanently removed.`
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 6. GET SUB CATEGORIES (Optional filter by main_cat_id)
 // Corresponds to Menu 2.5: Sub Categories (/manage-sub-categories) [Screenshot #06]
 // =========================================================================
 router.get('/subcategories', async (req, res) => {
