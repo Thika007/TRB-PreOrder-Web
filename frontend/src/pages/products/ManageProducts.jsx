@@ -565,7 +565,7 @@ export default function ManageProducts() {
             <thead>
               <tr>
                 {/* 1. Product ID */}
-                <th onClick={() => handleSort('product_id')} style={{ cursor: 'pointer', width: '100px' }}>
+                <th onClick={() => handleSort('product_id')} style={{ cursor: 'pointer', minWidth: '130px' }}>
                   <div className="th-content">
                     <span>Product ID</span>
                     <span className="sort-icon">
@@ -575,7 +575,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 2. Product Name */}
-                <th onClick={() => handleSort('product_name')} style={{ cursor: 'pointer' }}>
+                <th onClick={() => handleSort('product_name')} style={{ cursor: 'pointer', minWidth: '220px' }}>
                   <div className="th-content">
                     <span>Product Name</span>
                     <span className="sort-icon">
@@ -585,7 +585,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 3. Main Category */}
-                <th onClick={() => handleSort('main_category_name')} style={{ cursor: 'pointer', width: '140px' }}>
+                <th onClick={() => handleSort('main_category_name')} style={{ cursor: 'pointer', minWidth: '160px' }}>
                   <div className="th-content">
                     <span>Main Category</span>
                     <span className="sort-icon">
@@ -595,7 +595,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 4. Sub Category */}
-                <th onClick={() => handleSort('sub_category_name')} style={{ cursor: 'pointer', width: '150px' }}>
+                <th onClick={() => handleSort('sub_category_name')} style={{ cursor: 'pointer', minWidth: '160px' }}>
                   <div className="th-content">
                     <span>Sub Category</span>
                     <span className="sort-icon">
@@ -605,7 +605,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 5. Net Weight */}
-                <th onClick={() => handleSort('net_weight')} style={{ cursor: 'pointer', width: '110px' }}>
+                <th onClick={() => handleSort('net_weight')} style={{ cursor: 'pointer', minWidth: '130px' }}>
                   <div className="th-content">
                     <span>Net Weight</span>
                     <span className="sort-icon">
@@ -615,7 +615,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 6. Price */}
-                <th onClick={() => handleSort('unit_price')} style={{ cursor: 'pointer', width: '110px' }}>
+                <th onClick={() => handleSort('unit_price')} style={{ cursor: 'pointer', minWidth: '100px' }}>
                   <div className="th-content">
                     <span>Price</span>
                     <span className="sort-icon">
@@ -625,7 +625,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 7. Discount Status */}
-                <th onClick={() => handleSort('is_discountable')} style={{ cursor: 'pointer', width: '160px' }}>
+                <th onClick={() => handleSort('is_discountable')} style={{ cursor: 'pointer', minWidth: '180px' }}>
                   <div className="th-content">
                     <span>Discount Status</span>
                     <span className="sort-icon">
@@ -635,7 +635,7 @@ export default function ManageProducts() {
                 </th>
 
                 {/* 8. Actions */}
-                <th style={{ width: '100px', textAlign: 'center' }}>
+                <th style={{ minWidth: '100px', textAlign: 'center' }}>
                   Actions
                 </th>
               </tr>
