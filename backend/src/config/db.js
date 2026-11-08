@@ -1,11 +1,12 @@
 const sql = require('mssql');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
 // SQL Server Connection Configuration matching TRB environment standards
 const dbConfig = {
     user: process.env.DB_USER || 'sa',
     password: process.env.DB_PASSWORD || 'sqladmin',
-    server: process.env.DB_SERVER || 'localhost',
+    server: process.env.DB_SERVER || '127.0.0.1',
     database: process.env.DB_NAME || 'TRB_PreOrder_DB',
     port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 1433,
     requestTimeout: 120000,

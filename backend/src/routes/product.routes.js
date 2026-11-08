@@ -509,13 +509,13 @@ router.delete('/subcategories/:id', async (req, res) => {
 });
 
 // =========================================================================
-// 3. GET PRODUCTS CATALOG (850+ Items with Fast Autocomplete & Filter)
+// 11. GET PRODUCTS CATALOG (850+ Items with Fast Autocomplete & Filter)
 // Corresponds to Menu 2.3: Manage Product (/add-product) [Screenshot #04]
 // & /add-order product dropdowns
 // =========================================================================
 router.get('/', async (req, res) => {
     try {
-        const { main_cat_id, sub_cat_id, search, is_available } = req.query;
+        const { main_cat_id, sub_cat_id, search, is_available, discount_status } = req.query;
         let query = `
             SELECT 
                 p.product_id,
@@ -530,7 +530,9 @@ router.get('/', async (req, res) => {
                 p.is_discountable,
                 p.is_available,
                 p.danupos_item_code,
-                p.description
+                p.description,
+                p.created_at,
+                p.updated_at
             FROM dbo.Products p
             LEFT JOIN dbo.MainCategories m ON p.main_cat_id = m.main_cat_id
             LEFT JOIN dbo.SubCategories s ON p.sub_cat_id = s.sub_cat_id
@@ -538,24 +540,39 @@ router.get('/', async (req, res) => {
         `;
         const params = [];
 
-        if (main_cat_id) {
-            query += ` AND p.main_cat_id = @main_cat_id`;
-            params.push({ name: 'main_cat_id', type: sql.VarChar(20), value: main_cat_id });
+        if (main_cat_id && main_cat_id !== '0' && main_cat_id !== '-- Select Main Category --') {
+            query += ` AND (p.main_cat_id = @main_cat_id OR m.category_name = @main_cat_id)`;
+            params.push({ name: 'main_cat_id', type: sql.VarChar(50), value: main_cat_id.trim() });
         }
-        if (sub_cat_id) {
-            query += ` AND p.sub_cat_id = @sub_cat_id`;
-            params.push({ name: 'sub_cat_id', type: sql.VarChar(20), value: sub_cat_id });
+        if (sub_cat_id && sub_cat_id !== '0' && sub_cat_id !== '-- Select Sub Category --') {
+            query += ` AND (p.sub_cat_id = @sub_cat_id OR s.sub_category_name = @sub_cat_id)`;
+            params.push({ name: 'sub_cat_id', type: sql.VarChar(50), value: sub_cat_id.trim() });
         }
-        if (is_available !== undefined) {
+        if (is_available !== undefined && is_available !== '') {
             query += ` AND p.is_available = @is_available`;
             params.push({ name: 'is_available', type: sql.Bit, value: is_available === 'true' || is_available === '1' ? 1 : 0 });
         }
-        if (search) {
-            query += ` AND (p.product_name LIKE '%' + @search + '%' OR p.product_code LIKE @search + '%' OR p.danupos_item_code LIKE @search + '%')`;
+        if (discount_status !== undefined && discount_status !== '' && discount_status !== 'all') {
+            if (discount_status === '1' || discount_status.toLowerCase() === 'discount' || discount_status.toLowerCase().includes('discount product')) {
+                query += ` AND p.is_discountable = 1`;
+            } else if (discount_status === '0' || discount_status.toLowerCase() === 'nondiscount' || discount_status.toLowerCase().includes('nondiscount')) {
+                query += ` AND p.is_discountable = 0`;
+            }
+        }
+        if (search && search.trim()) {
+            query += ` AND (
+                p.product_name LIKE '%' + @search + '%' 
+                OR CAST(p.product_id AS VARCHAR) = @exactSearch
+                OR p.product_code LIKE @search + '%' 
+                OR m.category_name LIKE '%' + @search + '%'
+                OR s.sub_category_name LIKE '%' + @search + '%'
+                OR p.danupos_item_code LIKE @search + '%'
+            )`;
             params.push({ name: 'search', type: sql.NVarChar(100), value: search.trim() });
+            params.push({ name: 'exactSearch', type: sql.VarChar(20), value: search.trim() });
         }
 
-        query += ` ORDER BY p.product_name ASC`;
+        query += ` ORDER BY p.product_id ASC`;
         const result = await executeQuery(query, params);
         res.json({
             success: true,
@@ -568,47 +585,413 @@ router.get('/', async (req, res) => {
 });
 
 // =========================================================================
-// 4. CREATE PRODUCT
-// Corresponds to Menu 2.3: FEED PRODUCT DATA form (/add-product) [Screenshot #04]
+// 12. GET SINGLE PRODUCT BY ID
 // =========================================================================
-router.post('/', async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
-        const { main_cat_id, sub_cat_id, product_name, product_code, net_weight, unit_price, is_discountable, description, danupos_item_code } = req.body;
-
-        if (!main_cat_id || !product_name || unit_price === undefined) {
-            return res.status(400).json({ success: false, error: 'Main Category, Product Name, and Price are required.' });
+        const prodId = parseInt(req.params.id, 10);
+        if (isNaN(prodId)) {
+            return res.status(400).json({ success: false, error: 'Invalid product ID' });
         }
 
-        const insertQuery = `
-            INSERT INTO dbo.Products (
-                main_cat_id, sub_cat_id, product_name, product_code, net_weight, 
-                unit_price, is_discountable, is_available, description, danupos_item_code
-            )
-            OUTPUT INSERTED.product_id, INSERTED.product_name, INSERTED.unit_price
-            VALUES (
-                @main_cat_id, @sub_cat_id, @product_name, @product_code, @net_weight, 
-                @unit_price, @is_discountable, 1, @description, @danupos_item_code
-            )
+        const query = `
+            SELECT 
+                p.product_id,
+                p.product_code,
+                p.product_name,
+                p.main_cat_id,
+                m.category_name AS main_category_name,
+                p.sub_cat_id,
+                s.sub_category_name,
+                p.net_weight,
+                p.unit_price,
+                p.is_discountable,
+                p.is_available,
+                p.danupos_item_code,
+                p.description,
+                p.created_at,
+                p.updated_at
+            FROM dbo.Products p
+            LEFT JOIN dbo.MainCategories m ON p.main_cat_id = m.main_cat_id
+            LEFT JOIN dbo.SubCategories s ON p.sub_cat_id = s.sub_cat_id
+            WHERE p.product_id = @id
         `;
+        const result = await executeQuery(query, [{ name: 'id', type: sql.Int, value: prodId }]);
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ success: false, error: `Product with ID ${prodId} not found.` });
+        }
 
-        const params = [
-            { name: 'main_cat_id', type: sql.VarChar(20), value: main_cat_id },
-            { name: 'sub_cat_id', type: sql.VarChar(20), value: sub_cat_id || null },
-            { name: 'product_name', type: sql.NVarChar(200), value: product_name.trim() },
-            { name: 'product_code', type: sql.VarChar(50), value: product_code || null },
-            { name: 'net_weight', type: sql.VarChar(50), value: net_weight || null },
-            { name: 'unit_price', type: sql.Decimal(18, 2), value: parseFloat(unit_price) },
-            { name: 'is_discountable', type: sql.Bit, value: is_discountable ? 1 : 0 },
-            { name: 'description', type: sql.NVarChar(sql.MAX), value: description || null },
-            { name: 'danupos_item_code', type: sql.VarChar(50), value: danupos_item_code || null }
-        ];
-
-        const result = await executeQuery(insertQuery, params);
-        res.status(201).json({ success: true, product: result.recordset[0] });
+        res.json({ success: true, product: result.recordset[0] });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
+// =========================================================================
+// 13. CREATE PRODUCT
+// Corresponds to Menu 2.3: FEED PRODUCT ITEM INFORMATION form (/add-product)
+// =========================================================================
+router.post('/', async (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    try {
+        let { 
+            main_cat_id, 
+            sub_cat_id, 
+            product_name, 
+            product_code, 
+            net_weight, 
+            unit_price, 
+            is_discountable, 
+            description, 
+            danupos_item_code 
+        } = req.body;
+
+        if (!product_name || !product_name.trim()) {
+            return res.status(400).json({ success: false, error: 'Product Name is required.' });
+        }
+        if (unit_price === undefined || unit_price === '' || isNaN(parseFloat(unit_price))) {
+            return res.status(400).json({ success: false, error: 'Valid Product Price is required.' });
+        }
+        if (!main_cat_id || main_cat_id === '0' || main_cat_id === '-- Select Main Category --') {
+            return res.status(400).json({ success: false, error: 'Product Main Category is required.' });
+        }
+
+        const cleanName = product_name.trim();
+        const price = parseFloat(unit_price);
+        const weight = net_weight && net_weight.toString().trim() ? net_weight.toString().trim() : null;
+        const desc = description && description.trim() ? description.trim() : cleanName;
+        const discountBit = (is_discountable === true || is_discountable === 1 || is_discountable === '1' || is_discountable === 'Discount') ? 1 : 0;
+
+        // Resolve main_cat_id if passed as name (e.g. 'Shoteats')
+        let resolvedMainCat = main_cat_id.trim();
+        if (!resolvedMainCat.startsWith('MCAT')) {
+            const findMain = await executeQuery(
+                'SELECT main_cat_id FROM dbo.MainCategories WHERE LOWER(category_name) = LOWER(@name)',
+                [{ name: 'name', type: sql.VarChar(100), value: resolvedMainCat }]
+            );
+            if (findMain.recordset.length > 0) {
+                resolvedMainCat = findMain.recordset[0].main_cat_id;
+            }
+        }
+
+        // Resolve sub_cat_id if passed as name (e.g. 'Buns')
+        let resolvedSubCat = sub_cat_id && sub_cat_id !== '0' && sub_cat_id !== '-- Select Sub Category --' ? sub_cat_id.trim() : null;
+        if (resolvedSubCat && !resolvedSubCat.startsWith('SCAT')) {
+            const findSub = await executeQuery(
+                `SELECT sub_cat_id FROM dbo.SubCategories 
+                 WHERE LOWER(sub_category_name) = LOWER(@name) 
+                 AND (main_cat_id = @main_cat_id OR @main_cat_id IS NULL)`,
+                [
+                    { name: 'name', type: sql.VarChar(100), value: resolvedSubCat },
+                    { name: 'main_cat_id', type: sql.VarChar(20), value: resolvedMainCat }
+                ]
+            );
+            if (findSub.recordset.length > 0) {
+                resolvedSubCat = findSub.recordset[0].sub_cat_id;
+            }
+        }
+
+        const insertQuery = `
+            INSERT INTO dbo.Products (
+                main_cat_id, sub_cat_id, product_name, product_code, net_weight, 
+                unit_price, is_discountable, is_available, description, danupos_item_code,
+                created_at, updated_at
+            )
+            OUTPUT INSERTED.product_id
+            VALUES (
+                @main_cat_id, @sub_cat_id, @product_name, @product_code, @net_weight, 
+                @unit_price, @is_discountable, 1, @description, @danupos_item_code,
+                GETDATE(), GETDATE()
+            )
+        `;
+
+        const params = [
+            { name: 'main_cat_id', type: sql.VarChar(20), value: resolvedMainCat },
+            { name: 'sub_cat_id', type: sql.VarChar(20), value: resolvedSubCat },
+            { name: 'product_name', type: sql.NVarChar(200), value: cleanName },
+            { name: 'product_code', type: sql.VarChar(50), value: product_code ? product_code.trim() : null },
+            { name: 'net_weight', type: sql.VarChar(50), value: weight },
+            { name: 'unit_price', type: sql.Decimal(18, 2), value: price },
+            { name: 'is_discountable', type: sql.Bit, value: discountBit },
+            { name: 'description', type: sql.NVarChar(sql.MAX), value: desc },
+            { name: 'danupos_item_code', type: sql.VarChar(50), value: danupos_item_code || null }
+        ];
+
+        const result = await executeQuery(insertQuery, params);
+        const newId = result.recordset[0].product_id;
+
+        // Auto assign product_code if not supplied
+        if (!product_code) {
+            await executeQuery(
+                'UPDATE dbo.Products SET product_code = @code WHERE product_id = @id',
+                [
+                    { name: 'code', type: sql.VarChar(50), value: `PRD${newId}` },
+                    { name: 'id', type: sql.Int, value: newId }
+                ]
+            );
+        }
+
+        // Fetch inserted full record with joins
+        const fullRecord = await executeQuery(`
+            SELECT 
+                p.product_id,
+                p.product_code,
+                p.product_name,
+                p.main_cat_id,
+                m.category_name AS main_category_name,
+                p.sub_cat_id,
+                s.sub_category_name,
+                p.net_weight,
+                p.unit_price,
+                p.is_discountable,
+                p.is_available,
+                p.danupos_item_code,
+                p.description,
+                p.created_at,
+                p.updated_at
+            FROM dbo.Products p
+            LEFT JOIN dbo.MainCategories m ON p.main_cat_id = m.main_cat_id
+            LEFT JOIN dbo.SubCategories s ON p.sub_cat_id = s.sub_cat_id
+            WHERE p.product_id = @id
+        `, [{ name: 'id', type: sql.Int, value: newId }]);
+
+        const createdProduct = fullRecord.recordset[0];
+
+        await logAuditEvent(
+            'PRODUCT_CREATED',
+            null,
+            `Created Product #${newId} "${cleanName}" (Price: LKR ${price}, Category: ${createdProduct.main_category_name || resolvedMainCat})`,
+            clientIp
+        );
+
+        console.log(`✅ [Product Master] New product created: #${newId} - ${cleanName} [LKR ${price}]`);
+
+        res.status(201).json({
+            success: true,
+            message: `Product "${cleanName}" created successfully with ID #${newId}.`,
+            product: createdProduct
+        });
+    } catch (error) {
+        console.error('Create Product Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 14. UPDATE PRODUCT
+// =========================================================================
+router.put('/:id', async (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    try {
+        const prodId = parseInt(req.params.id, 10);
+        if (isNaN(prodId)) {
+            return res.status(400).json({ success: false, error: 'Invalid product ID' });
+        }
+
+        let { 
+            main_cat_id, 
+            sub_cat_id, 
+            product_name, 
+            product_code, 
+            net_weight, 
+            unit_price, 
+            is_discountable, 
+            description, 
+            danupos_item_code,
+            is_available
+        } = req.body;
+
+        if (!product_name || !product_name.trim()) {
+            return res.status(400).json({ success: false, error: 'Product Name is required.' });
+        }
+        if (unit_price === undefined || unit_price === '' || isNaN(parseFloat(unit_price))) {
+            return res.status(400).json({ success: false, error: 'Valid Product Price is required.' });
+        }
+
+        const cleanName = product_name.trim();
+        const price = parseFloat(unit_price);
+        const weight = net_weight && net_weight.toString().trim() ? net_weight.toString().trim() : null;
+        const desc = description && description.trim() ? description.trim() : cleanName;
+        const discountBit = (is_discountable === true || is_discountable === 1 || is_discountable === '1' || is_discountable === 'Discount') ? 1 : 0;
+
+        // Resolve main_cat_id
+        let resolvedMainCat = main_cat_id ? main_cat_id.trim() : null;
+        if (resolvedMainCat && !resolvedMainCat.startsWith('MCAT') && resolvedMainCat !== '0') {
+            const findMain = await executeQuery(
+                'SELECT main_cat_id FROM dbo.MainCategories WHERE LOWER(category_name) = LOWER(@name)',
+                [{ name: 'name', type: sql.VarChar(100), value: resolvedMainCat }]
+            );
+            if (findMain.recordset.length > 0) {
+                resolvedMainCat = findMain.recordset[0].main_cat_id;
+            }
+        }
+
+        // Resolve sub_cat_id
+        let resolvedSubCat = sub_cat_id && sub_cat_id !== '0' ? sub_cat_id.trim() : null;
+        if (resolvedSubCat && !resolvedSubCat.startsWith('SCAT')) {
+            const findSub = await executeQuery(
+                `SELECT sub_cat_id FROM dbo.SubCategories 
+                 WHERE LOWER(sub_category_name) = LOWER(@name) 
+                 AND (main_cat_id = @main_cat_id OR @main_cat_id IS NULL)`,
+                [
+                    { name: 'name', type: sql.VarChar(100), value: resolvedSubCat },
+                    { name: 'main_cat_id', type: sql.VarChar(20), value: resolvedMainCat }
+                ]
+            );
+            if (findSub.recordset.length > 0) {
+                resolvedSubCat = findSub.recordset[0].sub_cat_id;
+            }
+        }
+
+        const updateQuery = `
+            UPDATE dbo.Products
+            SET 
+                product_name = @product_name,
+                unit_price = @unit_price,
+                net_weight = @net_weight,
+                description = @description,
+                is_discountable = @is_discountable,
+                main_cat_id = ISNULL(@main_cat_id, main_cat_id),
+                sub_cat_id = @sub_cat_id,
+                is_available = ISNULL(@is_available, is_available),
+                product_code = ISNULL(@product_code, product_code),
+                updated_at = GETDATE()
+            WHERE product_id = @id
+        `;
+
+        const params = [
+            { name: 'product_name', type: sql.NVarChar(200), value: cleanName },
+            { name: 'unit_price', type: sql.Decimal(18, 2), value: price },
+            { name: 'net_weight', type: sql.VarChar(50), value: weight },
+            { name: 'description', type: sql.NVarChar(sql.MAX), value: desc },
+            { name: 'is_discountable', type: sql.Bit, value: discountBit },
+            { name: 'main_cat_id', type: sql.VarChar(20), value: resolvedMainCat },
+            { name: 'sub_cat_id', type: sql.VarChar(20), value: resolvedSubCat },
+            { name: 'is_available', type: sql.Bit, value: is_available !== undefined ? (is_available ? 1 : 0) : null },
+            { name: 'product_code', type: sql.VarChar(50), value: product_code ? product_code.trim() : null },
+            { name: 'id', type: sql.Int, value: prodId }
+        ];
+
+        await executeQuery(updateQuery, params);
+
+        // Fetch updated record with joins
+        const fullRecord = await executeQuery(`
+            SELECT 
+                p.product_id,
+                p.product_code,
+                p.product_name,
+                p.main_cat_id,
+                m.category_name AS main_category_name,
+                p.sub_cat_id,
+                s.sub_category_name,
+                p.net_weight,
+                p.unit_price,
+                p.is_discountable,
+                p.is_available,
+                p.danupos_item_code,
+                p.description,
+                p.created_at,
+                p.updated_at
+            FROM dbo.Products p
+            LEFT JOIN dbo.MainCategories m ON p.main_cat_id = m.main_cat_id
+            LEFT JOIN dbo.SubCategories s ON p.sub_cat_id = s.sub_cat_id
+            WHERE p.product_id = @id
+        `, [{ name: 'id', type: sql.Int, value: prodId }]);
+
+        if (fullRecord.recordset.length === 0) {
+            return res.status(404).json({ success: false, error: `Product with ID ${prodId} not found.` });
+        }
+
+        const updatedProduct = fullRecord.recordset[0];
+
+        await logAuditEvent(
+            'PRODUCT_UPDATED',
+            null,
+            `Updated Product #${prodId} "${cleanName}" (Price: LKR ${price})`,
+            clientIp
+        );
+
+        res.json({
+            success: true,
+            message: `Product #${prodId} "${cleanName}" updated successfully.`,
+            product: updatedProduct
+        });
+    } catch (error) {
+        console.error('Update Product Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 15. DELETE / DEACTIVATE PRODUCT
+// =========================================================================
+router.delete('/:id', async (req, res) => {
+    const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+    try {
+        const prodId = parseInt(req.params.id, 10);
+        if (isNaN(prodId)) {
+            return res.status(400).json({ success: false, error: 'Invalid product ID' });
+        }
+
+        // Check product existence
+        const check = await executeQuery(
+            'SELECT product_id, product_name FROM dbo.Products WHERE product_id = @id',
+            [{ name: 'id', type: sql.Int, value: prodId }]
+        );
+        if (check.recordset.length === 0) {
+            return res.status(404).json({ success: false, error: `Product with ID ${prodId} not found.` });
+        }
+        const prodName = check.recordset[0].product_name;
+
+        // Check if referenced in order items
+        const orderCheck = await executeQuery(
+            'SELECT COUNT(*) AS cnt FROM dbo.OrderItems WHERE product_id = @id',
+            [{ name: 'id', type: sql.Int, value: prodId }]
+        );
+        const orderCount = orderCheck.recordset[0]?.cnt || 0;
+
+        if (orderCount > 0) {
+            // Soft-deactivate to preserve historical invoice records
+            await executeQuery(
+                'UPDATE dbo.Products SET is_available = 0 WHERE product_id = @id',
+                [{ name: 'id', type: sql.Int, value: prodId }]
+            );
+            await logAuditEvent(
+                'PRODUCT_DEACTIVATED',
+                null,
+                `Deactivated Product #${prodId} "${prodName}" (Referenced in ${orderCount} order line items)`,
+                clientIp
+            );
+
+            return res.json({
+                success: true,
+                message: `Product #${prodId} "${prodName}" is attached to ${orderCount} existing counter orders. It has been marked inactive.`
+            });
+        }
+
+        // Hard delete if clean
+        await executeQuery(
+            'DELETE FROM dbo.Products WHERE product_id = @id',
+            [{ name: 'id', type: sql.Int, value: prodId }]
+        );
+
+        await logAuditEvent(
+            'PRODUCT_DELETED',
+            null,
+            `Permanently deleted Product #${prodId} "${prodName}"`,
+            clientIp
+        );
+
+        res.json({
+            success: true,
+            message: `Product #${prodId} "${prodName}" permanently removed.`
+        });
+    } catch (error) {
+        console.error('Delete Product Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 module.exports = router;
+
 

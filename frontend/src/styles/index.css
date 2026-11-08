@@ -1828,6 +1828,50 @@ button, input, select, textarea {
   }
 }
 
+/* Product Form Grids (Matches trbsys.net 4-col + 3-col layout) */
+.product-form-grid-row1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.3fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.product-form-grid-row2 {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .product-form-grid-row1 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .product-form-grid-row2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .product-form-grid-row1,
+  .product-form-grid-row2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.discount-status-badge {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.discount-status-discount {
+  color: #f43f5e;
+}
+
+.discount-status-nondiscount {
+  color: #10b981;
+}
+
 .field-input-readonly {
   background-color: #f8fafc !important;
   border: 1px solid #e2e8f0 !important;
