@@ -1755,6 +1755,25 @@ button, input, select, textarea {
   }
 }
 
+.subcategory-form-grid {
+  display: grid;
+  grid-template-columns: 160px 220px 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 1024px) {
+  .subcategory-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .subcategory-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .field-input-readonly {
   background-color: #f1f5f9 !important;
   color: #475569 !important;
