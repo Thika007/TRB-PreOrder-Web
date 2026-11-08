@@ -11,6 +11,8 @@ import ChefReports from './pages/kitchen/ChefReports';
 import Delivery from './pages/kitchen/Delivery';
 import CustomerList from './pages/customers/CustomerList';
 import ManageProducts from './pages/products/ManageProducts';
+import CreateUser from './pages/users/CreateUser';
+import ManageUsers from './pages/users/ManageUsers';
 import Reports from './pages/reports/Reports';
 import Promotions from './pages/promotions/Promotions';
 
@@ -51,8 +53,8 @@ export default function App() {
             <Route path="add-product" element={<ManageProducts />} />
             <Route path="manage-categories" element={<ManageProducts />} />
             <Route path="manage-sub-categories" element={<ManageProducts />} />
-            <Route path="create-users" element={<CustomerList />} />
-            <Route path="manage-users" element={<CustomerList />} />
+            <Route path="create-users" element={<CreateUser />} />
+            <Route path="manage-users" element={<ManageUsers />} />
             
             {/* Menu 6 & 7: Reports & Promotions */}
             <Route path="reports" element={<Reports />} />

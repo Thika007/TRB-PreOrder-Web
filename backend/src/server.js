@@ -5,6 +5,7 @@ const { getPool, executeQuery } = require('./config/db');
 
 // Route Handlers
 const authRoutes = require('./routes/auth.routes');
+const userRoutes = require('./routes/user.routes');
 const customerRoutes = require('./routes/customer.routes');
 const productRoutes = require('./routes/product.routes');
 const orderRoutes = require('./routes/order.routes');
@@ -19,6 +20,7 @@ app.use(express.json());
 
 // API Endpoints
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
