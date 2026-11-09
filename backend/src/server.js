@@ -73,3 +73,5 @@ app.listen(PORT, async () => {
         console.warn('⚠️ Initial DB connect failed. Server will retry when requests arrive.');
     }
 });
+
+module.exports = app;

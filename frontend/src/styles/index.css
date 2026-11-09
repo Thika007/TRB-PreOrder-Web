@@ -1883,6 +1883,217 @@ button, input, select, textarea {
   }
 }
 
+/* ==========================================================================
+   ORDER CREATION PAGE (/add-order) FORM GRIDS & COMPONENTS
+   Matches exact trbsys.net 4-Card POS Workflow
+   ========================================================================== */
+
+/* Card 1: Fill Order Information Grids */
+.order-info-grid-row1 {
+  display: grid;
+  grid-template-columns: 1.2fr 1.2fr 1.6fr 1fr 0.8fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.order-info-grid-row2 {
+  display: grid;
+  grid-template-columns: 1.5fr 1.1fr 1.1fr 1.3fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+/* Card 3: Fill Customer Information Grids */
+.order-customer-grid-row1 {
+  display: grid;
+  grid-template-columns: 130px 1.2fr 1.2fr 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.order-customer-grid-row2 {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 2fr;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+/* Card 4: Fill Payment Information Grid */
+.order-payment-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1200px) {
+  .order-info-grid-row1,
+  .order-info-grid-row2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .order-customer-grid-row1 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .order-customer-grid-row2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .order-payment-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .order-info-grid-row1,
+  .order-info-grid-row2,
+  .order-customer-grid-row1,
+  .order-customer-grid-row2,
+  .order-payment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Autocomplete Customer Suggestions */
+.autocomplete-wrapper {
+  position: relative;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.12), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin-top: 4px;
+}
+
+.autocomplete-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.12s ease;
+}
+
+.autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.autocomplete-item:hover {
+  background-color: #eff6ff;
+  color: #258be0;
+}
+
+.autocomplete-item-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.autocomplete-item-mobile {
+  font-weight: 500;
+  color: #64748b;
+  font-size: 12px;
+}
+
+/* Order Financial Summary Bar */
+.order-financial-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 22px;
+}
+
+.financial-metric {
+  display: flex;
+  flex-direction: column;
+}
+
+.financial-metric-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.05em;
+}
+
+.financial-metric-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.financial-metric-value.highlight-total {
+  color: #258be0;
+  font-size: 20px;
+}
+
+.financial-metric-value.highlight-balance {
+  color: #f43f5e;
+  font-size: 20px;
+}
+
+.financial-metric-value.highlight-paid {
+  color: #10b981;
+}
+
+/* Modern Teal Button for Reset */
+.btn-teal {
+  background-color: #48c78e !important;
+  color: #ffffff !important;
+}
+
+.btn-teal:hover {
+  background-color: #3bb880 !important;
+}
+
+/* Modal Overlay */
+.order-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+}
+
+.order-modal-box {
+  background: #ffffff;
+  border-radius: 14px;
+  max-width: 560px;
+  width: 100%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  padding: 28px;
+  animation: modalScaleIn 0.18s ease-out;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 .discount-status-badge {
   font-weight: 600;
   font-size: 13px;

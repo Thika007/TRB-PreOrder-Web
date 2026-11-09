@@ -1,431 +1,496 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
-  User, 
-  Phone, 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  ShoppingBag, 
-  Cake, 
-  Plus, 
+  Building2, 
   Trash2, 
+  Plus, 
+  Search, 
+  CheckCircle2, 
+  AlertCircle, 
   Printer, 
-  CheckCircle,
-  AlertCircle
+  RotateCcw, 
+  User, 
+  Clock, 
+  Calendar,
+  DollarSign,
+  Cake,
+  FileText
 } from 'lucide-react';
 import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 export default function CreateOrder() {
-  // Customer State
-  const [mobileSearch, setMobileSearch] = useState('');
-  const [customerSuggestions, setCustomerSuggestions] = useState([]);
-  const [selectedCustomer, setSelectedCustomer] = useState(null);
-  const [customerForm, setCustomerForm] = useState({
-    title: 'Mr',
-    first_name: '',
-    mobile: '',
-    delivery_address: ''
-  });
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  // Delivery & Timing State
-  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-  const [deliveryDate, setDeliveryDate] = useState(tomorrow);
-  const [deliveryTime, setDeliveryTime] = useState('11:00 AM');
-  const [deliveryType, setDeliveryType] = useState('Showroom Pickup');
-
-  // Product Catalog State
-  const [categories, setCategories] = useState([]);
-  const [selectedMainCat, setSelectedMainCat] = useState('');
-  const [products, setProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  // ========================================================
+  // 1. CATALOG STATE (Categories, Subcategories, Products)
+  // ========================================================
+  const [mainCategories, setMainCategories] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
 
   // Active Item Builder State
-  const [itemQuantity, setItemQuantity] = useState(1);
-  const [itemMilestone, setItemMilestone] = useState('None');
-  const [itemOccasion, setItemOccasion] = useState('Happy Birthday');
-  const [itemIcingText, setItemIcingText] = useState('');
-  const [itemNotes, setItemNotes] = useState('');
+  const [itemMainCatId, setItemMainCatId] = useState('');
+  const [itemSubCatId, setItemSubCatId] = useState('');
+  const [itemProductId, setItemProductId] = useState('');
+  const [itemPrice, setItemPrice] = useState('');
+  const [itemQty, setItemQty] = useState(1);
+  const [itemDescription, setItemDescription] = useState('');
+  const [itemGreeting1, setItemGreeting1] = useState('None');
+  const [itemGreeting2, setItemGreeting2] = useState('None');
+  const [itemGreetingInfo2, setItemGreetingInfo2] = useState('');
+  const [itemStatus, setItemStatus] = useState('Pending');
 
-  // Cart / Order Items Table
+  // Filtered dropdown lists for item builder
+  const [filteredSubCategories, setFilteredSubCategories] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+
+  // ========================================================
+  // 2. ORDER ITEMS CART STATE
+  // ========================================================
   const [orderItems, setOrderItems] = useState([]);
-  const [advanceAmount, setAdvanceAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('Cash');
-  const [saving, setSaving] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(null);
 
-  // Load Main Categories on Mount
+  // ========================================================
+  // 3. CUSTOMER INFORMATION STATE
+  // ========================================================
+  const [custTitle, setCustTitle] = useState('Mr');
+  const [custFirstName, setCustFirstName] = useState('');
+  const [custMobile, setCustMobile] = useState('');
+  const [custTelephone, setCustTelephone] = useState('');
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  
+  // Tomorrow's date in YYYY-MM-DD
+  const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const [deliveryDate, setDeliveryDate] = useState(tomorrowStr);
+  const [deliveryTime, setDeliveryTime] = useState('11:00');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+
+  // Mobile autocomplete state
+  const [mobileSuggestions, setMobileSuggestions] = useState([]);
+  const [showMobileDropdown, setShowMobileDropdown] = useState(false);
+  const mobileInputRef = useRef(null);
+
+  // ========================================================
+  // 4. PAYMENT & TOTALS STATE
+  // ========================================================
+  const [paymentType, setPaymentType] = useState('Cash');
+  const [discountPercent, setDiscountPercent] = useState(0);
+  const [manufactureDate, setManufactureDate] = useState(tomorrowStr);
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [serviceChargePercent, setServiceChargePercent] = useState(0);
+  const [deliveryCharge, setDeliveryCharge] = useState(0);
+
+  // Operation Feedback & Modal States
+  const [saving, setSaving] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [orderSuccessModal, setOrderSuccessModal] = useState(null);
+
+  // ========================================================
+  // LOAD CATALOG DATA ON COMPONENT MOUNT
+  // ========================================================
   useEffect(() => {
-    axios.get('/api/products/categories')
-      .then(res => {
-        if (res.data.success && res.data.categories.length > 0) {
-          setCategories(res.data.categories);
-          setSelectedMainCat(res.data.categories[0].main_cat_id);
+    async function loadCatalog() {
+      try {
+        setLoadingCatalog(true);
+        const [catsRes, subcatsRes, prodsRes] = await Promise.all([
+          axios.get('/api/products/categories'),
+          axios.get('/api/products/subcategories'),
+          axios.get('/api/products?is_available=1')
+        ]);
+
+        if (catsRes.data.success) {
+          setMainCategories(catsRes.data.categories || []);
         }
-      })
-      .catch(console.error);
+        if (subcatsRes.data.success) {
+          setSubCategories(subcatsRes.data.subcategories || []);
+        }
+        if (prodsRes.data.success) {
+          setAllProducts(prodsRes.data.products || []);
+        }
+      } catch (err) {
+        console.error('Error loading product catalog for orders:', err);
+        setFeedback({ type: 'danger', message: 'Failed to load catalog data from server. Please refresh.' });
+      } finally {
+        setLoadingCatalog(false);
+      }
+    }
+
+    loadCatalog();
   }, []);
 
-  // Load Products when Main Category changes
+  // Sync Subcategories when Main Category changes
   useEffect(() => {
-    if (selectedMainCat) {
-      axios.get(`/api/products?main_cat_id=${selectedMainCat}`)
-        .then(res => {
-          if (res.data.success) {
-            setProducts(res.data.products);
-            if (res.data.products.length > 0) {
-              setSelectedProduct(res.data.products[0]);
-            } else {
-              setSelectedProduct(null);
-            }
+    if (!itemMainCatId || itemMainCatId === '0') {
+      setFilteredSubCategories([]);
+      setItemSubCatId('');
+      setFilteredProducts([]);
+      setItemProductId('');
+      setItemPrice('');
+      return;
+    }
+
+    // Filter subcategories for this main category
+    const subs = subCategories.filter(s => String(s.main_cat_id) === String(itemMainCatId));
+    setFilteredSubCategories(subs);
+    setItemSubCatId('');
+
+    // Filter products matching main category
+    const prods = allProducts.filter(p => String(p.main_cat_id) === String(itemMainCatId));
+    setFilteredProducts(prods);
+    setItemProductId('');
+    setItemPrice('');
+  }, [itemMainCatId, subCategories, allProducts]);
+
+  // Sync Products when Subcategory changes
+  useEffect(() => {
+    if (!itemSubCatId || itemSubCatId === '0') {
+      if (itemMainCatId) {
+        const prods = allProducts.filter(p => String(p.main_cat_id) === String(itemMainCatId));
+        setFilteredProducts(prods);
+      } else {
+        setFilteredProducts([]);
+      }
+      setItemProductId('');
+      setItemPrice('');
+      return;
+    }
+
+    // Filter products matching both main and sub category
+    const prods = allProducts.filter(
+      p => String(p.main_cat_id) === String(itemMainCatId) && String(p.sub_cat_id) === String(itemSubCatId)
+    );
+    setFilteredProducts(prods);
+    setItemProductId('');
+    setItemPrice('');
+  }, [itemSubCatId, itemMainCatId, allProducts]);
+
+  // Auto-fill price when product is selected
+  useEffect(() => {
+    if (!itemProductId || itemProductId === '0') {
+      setItemPrice('');
+      return;
+    }
+
+    const prd = allProducts.find(p => String(p.product_id) === String(itemProductId));
+    if (prd) {
+      setItemPrice(prd.unit_price !== undefined ? Number(prd.unit_price).toFixed(2) : '');
+    }
+  }, [itemProductId, allProducts]);
+
+  // Auto-search customers by mobile
+  useEffect(() => {
+    const q = custMobile.trim();
+    if (q.length >= 3) {
+      const timer = setTimeout(async () => {
+        try {
+          const res = await axios.get(`/api/customers/search?q=${encodeURIComponent(q)}`);
+          if (res.data.success && res.data.customers.length > 0) {
+            setMobileSuggestions(res.data.customers);
+            setShowMobileDropdown(true);
+          } else {
+            setMobileSuggestions([]);
+            setShowMobileDropdown(false);
           }
-        })
-        .catch(console.error);
-    }
-  }, [selectedMainCat]);
-
-  // Mobile Autocomplete Search (Sub-15ms)
-  useEffect(() => {
-    if (mobileSearch.trim().length >= 2) {
-      const delay = setTimeout(() => {
-        axios.get(`/api/customers/search?q=${encodeURIComponent(mobileSearch.trim())}`)
-          .then(res => {
-            if (res.data.success) {
-              setCustomerSuggestions(res.data.customers);
-            }
-          })
-          .catch(console.error);
+        } catch (e) {
+          console.warn('Customer lookup error:', e.message);
+        }
       }, 150);
-      return () => clearTimeout(delay);
+      return () => clearTimeout(timer);
     } else {
-      setCustomerSuggestions([]);
+      setMobileSuggestions([]);
+      setShowMobileDropdown(false);
     }
-  }, [mobileSearch]);
+  }, [custMobile]);
 
-  const selectCustomer = (cust) => {
-    setSelectedCustomer(cust);
-    setCustomerForm({
-      title: cust.title || 'Mr',
-      first_name: cust.first_name,
-      mobile: cust.mobile,
-      delivery_address: cust.delivery_address || ''
-    });
-    setMobileSearch(cust.mobile);
-    setCustomerSuggestions([]);
+  // Customer selected from suggestions dropdown
+  const handleSelectCustomer = (c) => {
+    setSelectedCustomerId(c.customer_id);
+    setCustTitle(c.title || 'Mr');
+    setCustFirstName(c.first_name || '');
+    setCustMobile(c.mobile || '');
+    setCustTelephone(c.landline || '');
+    if (c.delivery_address) {
+      setDeliveryAddress(c.delivery_address);
+    }
+    setShowMobileDropdown(false);
   };
 
-  // Add Item to Order Table
-  const handleAddItem = () => {
-    if (!selectedProduct) return;
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (mobileInputRef.current && !mobileInputRef.current.contains(e.target)) {
+        setShowMobileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    const unitPrice = parseFloat(selectedProduct.unit_price) || 0;
-    const qty = parseFloat(itemQuantity) || 1;
-    const total = unitPrice * qty;
+  // ========================================================
+  // ADD PRODUCT TO ORDER ITEMS LIST
+  // ========================================================
+  const handleAddProduct = () => {
+    setFeedback(null);
+    if (!itemProductId || itemProductId === '0') {
+      setFeedback({ type: 'danger', message: 'Please select a valid Product before adding.' });
+      return;
+    }
+
+    const prd = allProducts.find(p => String(p.product_id) === String(itemProductId));
+    if (!prd) {
+      setFeedback({ type: 'danger', message: 'Selected product could not be found.' });
+      return;
+    }
+
+    const qtyNum = parseFloat(itemQty);
+    if (isNaN(qtyNum) || qtyNum <= 0) {
+      setFeedback({ type: 'danger', message: 'Quantity must be greater than zero.' });
+      return;
+    }
+
+    const priceNum = parseFloat(itemPrice);
+    if (isNaN(priceNum) || priceNum < 0) {
+      setFeedback({ type: 'danger', message: 'Please enter a valid unit price.' });
+      return;
+    }
+
+    const itemTotal = Number((qtyNum * priceNum).toFixed(2));
 
     const newItem = {
-      product_id: selectedProduct.product_id,
-      product_name: selectedProduct.product_name,
-      net_weight: selectedProduct.net_weight,
-      quantity: qty,
-      unit_price: unitPrice,
-      total_price: total,
-      greeting_milestone: itemMilestone,
-      greeting_occasion: itemOccasion,
-      greeting_icing_text: itemIcingText,
-      item_notes: itemNotes
+      temp_id: Date.now() + Math.random(),
+      product_id: prd.product_id,
+      product_name: prd.product_name,
+      quantity: qtyNum,
+      unit_price: priceNum,
+      total_price: itemTotal,
+      description: itemDescription.trim(),
+      greeting_occasion: itemGreeting1 !== 'None' ? itemGreeting1 : null,
+      greeting_milestone: itemGreeting2 !== 'None' ? itemGreeting2 : null,
+      greeting_icing_text: itemDescription.trim() || null,
+      greeting_info2: itemGreetingInfo2.trim() || null,
+      status: itemStatus || 'Pending'
     };
 
     setOrderItems(prev => [...prev, newItem]);
-    
-    // Reset item customizer fields
-    setItemIcingText('');
-    setItemNotes('');
-    setItemQuantity(1);
+
+    // Reset item builder for next product
+    setItemDescription('');
+    setItemGreeting1('None');
+    setItemGreeting2('None');
+    setItemGreetingInfo2('');
+    setItemQty(1);
+    // Keep category selection for rapid multi-item entry
   };
 
-  const handleRemoveItem = (index) => {
-    setOrderItems(prev => prev.filter((_, i) => i !== index));
+  // Remove Item from Cart
+  const handleRemoveItem = (tempId) => {
+    setOrderItems(prev => prev.filter(item => item.temp_id !== tempId));
   };
 
-  // Financial Calculations
-  const subTotal = orderItems.reduce((acc, item) => acc + item.total_price, 0);
-  const totalAmount = subTotal;
-  const advance = parseFloat(advanceAmount) || 0;
-  const balanceAmount = Math.max(0, totalAmount - advance);
+  // ========================================================
+  // FINANCIAL TOTALS CALCULATION
+  // ========================================================
+  const subTotal = orderItems.reduce((acc, curr) => acc + curr.total_price, 0);
+  const discountPctNum = parseFloat(discountPercent) || 0;
+  const discountAmount = Number((subTotal * (discountPctNum / 100)).toFixed(2));
+  const serviceChargePctNum = parseFloat(serviceChargePercent) || 0;
+  const serviceChargeAmount = Number((subTotal * (serviceChargePctNum / 100)).toFixed(2));
+  const deliveryChargeNum = parseFloat(deliveryCharge) || 0;
+  const netTotal = Number((subTotal - discountAmount + serviceChargeAmount + deliveryChargeNum).toFixed(2));
+  const advanceAmountNum = parseFloat(advanceAmount) || 0;
+  const balanceDue = Math.max(0, Number((netTotal - advanceAmountNum).toFixed(2)));
 
-  // Submit Order
-  const handleSaveOrder = async () => {
-    if (!customerForm.mobile || !customerForm.first_name) {
-      alert('Please enter or select a customer phone number and name.');
+  // ========================================================
+  // SUBMIT ORDER TRANSACTION
+  // ========================================================
+  const handleSubmitOrder = async (e) => {
+    e.preventDefault();
+    setFeedback(null);
+
+    if (orderItems.length === 0) {
+      setFeedback({ type: 'danger', message: 'Please add at least one product to the order list.' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-    if (orderItems.length === 0) {
-      alert('Please add at least one item or cake to the order table.');
+
+    if (!custFirstName.trim()) {
+      setFeedback({ type: 'danger', message: 'Customer First Name is required.' });
+      window.scrollTo({ top: 300, behavior: 'smooth' });
+      return;
+    }
+
+    if (!custMobile.trim()) {
+      setFeedback({ type: 'danger', message: 'Customer Mobile Number is required.' });
+      window.scrollTo({ top: 300, behavior: 'smooth' });
+      return;
+    }
+
+    if (!deliveryDate) {
+      setFeedback({ type: 'danger', message: 'Please specify the Date of Delivery.' });
       return;
     }
 
     setSaving(true);
     try {
-      // 1. Ensure customer is created or retrieved
-      let customerId = selectedCustomer ? selectedCustomer.customer_id : null;
-      if (!customerId) {
-        const custRes = await axios.post('/api/customers', {
-          title: customerForm.title,
-          first_name: customerForm.first_name,
-          mobile: customerForm.mobile,
-          delivery_address: customerForm.delivery_address
-        });
-        customerId = custRes.data.customer.customer_id;
-      }
-
-      // 2. Submit Order Header & Items
-      const orderPayload = {
-        customer_id: customerId,
-        ordered_by: customerForm.first_name,
+      const payload = {
+        customer_id: selectedCustomerId,
+        customer: {
+          title: custTitle,
+          first_name: custFirstName.trim(),
+          mobile: custMobile.trim(),
+          telephone: custTelephone.trim(),
+          delivery_address: deliveryAddress.trim()
+        },
+        ordered_by: user?.user_name || 'Admin',
         delivery_date: deliveryDate,
-        delivery_time: deliveryTime,
-        delivery_type: deliveryType,
-        delivery_address: customerForm.delivery_address,
+        delivery_time: deliveryTime || '11:00 AM',
+        delivery_type: deliveryAddress.trim() ? 'Home Delivery' : 'Showroom Pickup',
+        delivery_address: deliveryAddress.trim(),
+        manufacture_date: manufactureDate || deliveryDate,
         sub_total: subTotal,
-        discount_amount: 0,
-        total_amount: totalAmount,
-        advance_amount: advance,
-        payment_method: paymentMethod,
+        discount_percent: discountPctNum,
+        discount_amount: discountAmount,
+        service_charge: serviceChargeAmount,
+        delivery_charge: deliveryChargeNum,
+        total_amount: netTotal,
+        advance_amount: advanceAmountNum,
+        payment_type: paymentType,
         items: orderItems,
-        created_by_user_id: 1
+        created_by_user_id: user?.user_id || 1
       };
 
-      const res = await axios.post('/api/orders', orderPayload);
+      const res = await axios.post('/api/orders', payload);
+
       if (res.data.success) {
-        setOrderSuccess(res.data);
+        setOrderSuccessModal({
+          order_id: res.data.order_id,
+          order_number: res.data.order_number,
+          receipt_no: res.data.receipt_no,
+          customer_name: `${custTitle} ${custFirstName}`,
+          customer_mobile: custMobile,
+          delivery_date: deliveryDate,
+          delivery_time: deliveryTime || '11:00 AM',
+          total_amount: netTotal,
+          advance_amount: advanceAmountNum,
+          balance_amount: res.data.balance_amount !== undefined ? res.data.balance_amount : balanceDue,
+          payment_status: res.data.payment_status || (balanceDue <= 0 ? 'Fully Paid' : 'Advance Paid'),
+          items_count: orderItems.length
+        });
+        
+        handleReset();
+      } else {
+        setFeedback({ type: 'danger', message: res.data.error || 'Failed to create order.' });
       }
     } catch (err) {
       console.error('Order creation error:', err);
-      alert('Failed to save order: ' + (err.response?.data?.error || err.message));
+      const msg = err.response?.data?.error || err.message || 'Server error while saving order.';
+      setFeedback({ type: 'danger', message: msg });
     } finally {
       setSaving(false);
     }
   };
 
-  // Reset form after booking
+  // Reset entire form
   const handleReset = () => {
-    setOrderSuccess(null);
     setOrderItems([]);
+    setItemMainCatId('');
+    setItemSubCatId('');
+    setItemProductId('');
+    setItemPrice('');
+    setItemQty(1);
+    setItemDescription('');
+    setItemGreeting1('None');
+    setItemGreeting2('None');
+    setItemGreetingInfo2('');
+    setItemStatus('Pending');
+
+    setCustTitle('Mr');
+    setCustFirstName('');
+    setCustMobile('');
+    setCustTelephone('');
+    setDeliveryAddress('');
+    setSelectedCustomerId(null);
+    setDeliveryDate(tomorrowStr);
+    setDeliveryTime('11:00');
+
+    setPaymentType('Cash');
+    setDiscountPercent(0);
+    setManufactureDate(tomorrowStr);
     setAdvanceAmount('');
-    setSelectedCustomer(null);
-    setCustomerForm({ title: 'Mr', first_name: '', mobile: '', delivery_address: '' });
-    setMobileSearch('');
+    setServiceChargePercent(0);
+    setDeliveryCharge(0);
   };
 
-  if (orderSuccess) {
-    return (
-      <div className="card" style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center', padding: '40px' }}>
-        <CheckCircle size={56} color="#059669" style={{ margin: '0 auto 16px auto' }} />
-        <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a' }}>Pre-Order Booked Successfully!</h2>
-        <p style={{ fontSize: '15px', color: '#64748b', marginTop: '6px' }}>
-          Order Number: <strong style={{ color: '#d97706', fontFamily: 'var(--font-mono)' }}>{orderSuccess.order_number}</strong>
-        </p>
-
-        <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '10px', margin: '24px 0', textAlign: 'left' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span>Total Bill Amount:</span>
-            <strong style={{ fontFamily: 'var(--font-mono)' }}>LKR {orderSuccess.total_amount.toFixed(2)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span>Advance Deposit Paid:</span>
-            <strong style={{ color: '#059669', fontFamily: 'var(--font-mono)' }}>LKR {orderSuccess.advance_amount.toFixed(2)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '8px' }}>
-            <span>Remaining Balance:</span>
-            <strong style={{ color: '#b45309', fontFamily: 'var(--font-mono)' }}>LKR {orderSuccess.balance_amount.toFixed(2)}</strong>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
-          <button className="btn btn-primary" onClick={() => window.print()}>
-            <Printer size={18} />
-            <span>Print 80mm Slip</span>
-          </button>
-          <button className="btn btn-secondary" onClick={handleReset}>
-            <span>Book Next Order (F1)</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      {/* TOP SECTION: CUSTOMER & DELIVERY SCHEDULE */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '20px' }}>
-        {/* PANEL 1: CUSTOMER DIRECTORY LOOKUP */}
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-            <User size={18} color="#d97706" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Customer Details (Instant Mobile Search)</h3>
-          </div>
-
-          <div style={{ position: 'relative', marginBottom: '12px' }}>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '4px' }}>
-              Search / Mobile Number*
-            </label>
-            <input 
-              type="text" 
-              className="pos-input" 
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '14px', fontFamily: 'var(--font-mono)' }}
-              placeholder="Type customer mobile (e.g. 077...)"
-              value={mobileSearch}
-              onChange={(e) => {
-                setMobileSearch(e.target.value);
-                setCustomerForm(prev => ({ ...prev, mobile: e.target.value }));
-              }}
-            />
-
-            {/* Sub-15ms Suggestions Popup */}
-            {customerSuggestions.length > 0 && (
-              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #cbd5e1', borderRadius: '6px', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', zIndex: 30, maxHeight: '200px', overflowY: 'auto' }}>
-                {customerSuggestions.map(cust => (
-                  <div 
-                    key={cust.customer_id}
-                    onClick={() => selectCustomer(cust)}
-                    style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between' }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
-                  >
-                    <span style={{ fontWeight: 600 }}>{cust.title} {cust.first_name} {cust.last_name || ''}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: '#d97706' }}>{cust.mobile}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '10px', marginBottom: '12px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Title</label>
-              <select 
-                value={customerForm.title} 
-                onChange={(e) => setCustomerForm(prev => ({ ...prev, title: e.target.value }))}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              >
-                <option>Mr</option><option>Mrs</option><option>Miss</option><option>Dr</option><option>Rev</option>
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Customer Name*</label>
-              <input 
-                type="text" 
-                value={customerForm.first_name}
-                onChange={(e) => setCustomerForm(prev => ({ ...prev, first_name: e.target.value }))}
-                placeholder="First name"
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Delivery / Contact Address</label>
-            <input 
-              type="text" 
-              value={customerForm.delivery_address}
-              onChange={(e) => setCustomerForm(prev => ({ ...prev, delivery_address: e.target.value }))}
-              placeholder="Showroom pickup or street address"
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-            />
-          </div>
-        </div>
-
-        {/* PANEL 2: DELIVERY & COLLECTION TIMING */}
-        <div className="card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-            <Calendar size={18} color="#d97706" />
-            <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Pickup Date & Time Schedule</h3>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '4px' }}>
-                Date of Delivery (d_delivery)*
-              </label>
-              <input 
-                type="date" 
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600 }}
-              />
-            </div>
-
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '4px' }}>
-                Pickup Time (time)*
-              </label>
-              <select 
-                value={deliveryTime} 
-                onChange={(e) => setDeliveryTime(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600 }}
-              >
-                <option>09:00 AM</option>
-                <option>10:00 AM</option>
-                <option>11:00 AM</option>
-                <option>12:00 PM</option>
-                <option>01:00 PM</option>
-                <option>02:00 PM</option>
-                <option>03:00 PM</option>
-                <option>04:00 PM</option>
-                <option>05:00 PM</option>
-                <option>06:00 PM</option>
-                <option>07:00 PM</option>
-                <option>08:00 PM</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b', display: 'block', marginBottom: '4px' }}>
-              Order Fulfillment Type
-            </label>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '6px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}>
-                <input 
-                  type="radio" 
-                  name="fulfillment" 
-                  checked={deliveryType === 'Showroom Pickup'} 
-                  onChange={() => setDeliveryType('Showroom Pickup')}
-                />
-                Showroom Counter Pickup
-              </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontWeight: 600 }}>
-                <input 
-                  type="radio" 
-                  name="fulfillment" 
-                  checked={deliveryType === 'Delivery'} 
-                  onChange={() => setDeliveryType('Delivery')}
-                />
-                Direct Delivery Dispatch
-              </label>
-            </div>
+    <div className="manage-categories-page">
+      {/* ========================================================
+          PAGE HEADER & BREADCRUMBS (Matching trbsys.net standard)
+          ======================================================== */}
+      <div className="page-header-row">
+        <div>
+          <h1 className="page-main-heading">Create Orders</h1>
+          <div className="breadcrumb-nav">
+            <Link to="/dashboard" className="breadcrumb-link">The Royal Bakery</Link>
+            <span className="breadcrumb-separator">/</span>
+            <span className="breadcrumb-link">Orders</span>
+            <span className="breadcrumb-separator">/</span>
+            <span className="breadcrumb-current">Create Orders</span>
           </div>
         </div>
       </div>
 
-      {/* PRODUCT PICKER & CAKE CUSTOMIZATION BUILDER */}
-      <div className="card" style={{ border: '2px solid #fef3c7', background: '#fffdfa' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-          <Cake size={20} color="#d97706" />
-          <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#92400e' }}>
-            Product Selection & Cake Customization (Exact trbsys.net Specs)
-          </h3>
+      {/* ========================================================
+          FEEDBACK ALERTS
+          ======================================================== */}
+      {feedback && (
+        <div className={`alert-box ${feedback.type === 'success' ? 'alert-success' : 'alert-danger'} animate-fadeIn`}>
+          {feedback.type === 'success' ? (
+            <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
+          ) : (
+            <AlertCircle size={18} className="text-rose-600 flex-shrink-0" />
+          )}
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 600, color: feedback.type === 'success' ? '#065f46' : '#9f1239', margin: 0 }}>
+              {feedback.message}
+            </p>
+          </div>
+          <button 
+            type="button" 
+            onClick={() => setFeedback(null)} 
+            className="alert-close-btn"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      {/* ========================================================
+          CARD 1: FILL ORDER INFORMATION (Exact trbsys.net Card 1)
+          ======================================================== */}
+      <div className="category-form-card">
+        <div className="category-form-header">
+          <h3 className="category-form-title">FILL ORDER INFORMATION</h3>
+          <p className="category-form-subtitle">Select product hierarchy, specify cake greetings, and add items</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '180px 1fr 100px 120px', gap: '14px', marginBottom: '14px' }}>
-          {/* Main Category */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>Main-Product-Type*</label>
-            <select 
-              value={selectedMainCat} 
-              onChange={(e) => setSelectedMainCat(e.target.value)}
-              style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600 }}
+        {/* Row 1: Main-Product-Type*, Sub-Product-Type, Product, Price, Qty */}
+        <div className="order-info-grid-row1">
+          {/* 1. Main-Product-Type* */}
+          <div className="form-field-group">
+            <label className="field-label">
+              Main-Product-Type<span className="required-star">*</span>
+            </label>
+            <select
+              value={itemMainCatId}
+              onChange={(e) => setItemMainCatId(e.target.value)}
+              className="field-select"
+              disabled={loadingCatalog}
             >
-              {categories.map(cat => (
+              <option value="">Select M-Product Type</option>
+              {mainCategories.map(cat => (
                 <option key={cat.main_cat_id} value={cat.main_cat_id}>
                   {cat.category_name}
                 </option>
@@ -433,250 +498,700 @@ export default function CreateOrder() {
             </select>
           </div>
 
-          {/* Product Dropdown (850+ items) */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>Product Item (850+ items)*</label>
-            <select 
-              value={selectedProduct ? selectedProduct.product_id : ''} 
-              onChange={(e) => {
-                const prod = products.find(p => p.product_id === parseInt(e.target.value));
-                setSelectedProduct(prod || null);
-              }}
-              style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600 }}
+          {/* 2. Sub-Product-Type */}
+          <div className="form-field-group">
+            <label className="field-label">Sub-Product-Type</label>
+            <select
+              value={itemSubCatId}
+              onChange={(e) => setItemSubCatId(e.target.value)}
+              className="field-select"
+              disabled={filteredSubCategories.length === 0}
             >
-              {products.map(p => (
-                <option key={p.product_id} value={p.product_id}>
-                  {p.product_name} {p.net_weight ? `(${p.net_weight})` : ''} - LKR {parseFloat(p.unit_price).toFixed(2)}
+              <option value="">Select S-Product Type</option>
+              {filteredSubCategories.map(sub => (
+                <option key={sub.sub_cat_id} value={sub.sub_cat_id}>
+                  {sub.sub_category_name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Quantity */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>Qty (odr_qty)*</label>
-            <input 
-              type="number" 
-              min="1" 
-              value={itemQuantity}
-              onChange={(e) => setItemQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #cbd5e1', textAlign: 'center', fontWeight: 700, fontFamily: 'var(--font-mono)' }}
+          {/* 3. Product */}
+          <div className="form-field-group">
+            <label className="field-label">
+              Product<span className="required-star">*</span>
+            </label>
+            <select
+              value={itemProductId}
+              onChange={(e) => setItemProductId(e.target.value)}
+              className="field-select"
+              disabled={filteredProducts.length === 0}
+            >
+              <option value="">Select Product Type</option>
+              {filteredProducts.map(p => (
+                <option key={p.product_id} value={p.product_id}>
+                  {p.product_name} {p.net_weight ? `(${p.net_weight})` : ''} - Rs. {Number(p.unit_price).toFixed(0)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 4. Price */}
+          <div className="form-field-group">
+            <label className="field-label">Price</label>
+            <input
+              type="number"
+              step="any"
+              value={itemPrice}
+              onChange={(e) => setItemPrice(e.target.value)}
+              placeholder="0.00"
+              className="field-input"
             />
           </div>
 
-          {/* Unit Price Display */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b' }}>Unit Price</label>
-            <div style={{ padding: '9px', background: '#f1f5f9', borderRadius: '6px', fontWeight: 700, fontFamily: 'var(--font-mono)', textAlign: 'right' }}>
-              {selectedProduct ? `LKR ${parseFloat(selectedProduct.unit_price).toFixed(2)}` : '0.00'}
-            </div>
-          </div>
-        </div>
-
-        {/* CAKE CUSTOMIZATION FIELDS (trbsys.net Milestone 1st-29th & Icing Text) */}
-        <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', border: '1px solid #e2e8f0', marginBottom: '14px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '180px 220px 1fr', gap: '14px', marginBottom: '10px' }}>
-            {/* Milestone Greetings (1st-29th) */}
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>Milestone Greetings*</label>
-              <select 
-                value={itemMilestone}
-                onChange={(e) => setItemMilestone(e.target.value)}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              >
-                <option>None</option>
-                {Array.from({ length: 29 }, (_, i) => `${i + 1}${['st','nd','rd'][((i+1)%10)-1] || 'th'}`).map(m => (
-                  <option key={m}>{m}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Occasion */}
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>Greetings Occasion*</label>
-              <select 
-                value={itemOccasion}
-                onChange={(e) => setItemOccasion(e.target.value)}
-                style={{ width: '100%', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
-              >
-                <option>None</option>
-                <option>Happy Birthday</option>
-                <option>Happy Anniversary</option>
-                <option>Happy Holy Communion</option>
-                <option>Congratulations</option>
-                <option>Happy Valentine's Day</option>
-              </select>
-            </div>
-
-            {/* Greetings info2: Custom Icing text on cake */}
-            <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#d97706' }}>
-                Greetings info2 (Recipient Name / Custom Icing Text on Cake)*
-              </label>
-              <input 
-                type="text" 
-                value={itemIcingText}
-                onChange={(e) => setItemIcingText(e.target.value)}
-                placeholder="e.g. Dearest Kevin, May God Bless You!"
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #f59e0b', fontWeight: 600 }}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Item Remarks (odr_gre_des)</label>
-            <input 
-              type="text" 
-              value={itemNotes}
-              onChange={(e) => setItemNotes(e.target.value)}
-              placeholder="Colour theme, ribbon style, shape requests (e.g. Chocolate buttercream, Blue and white roses)"
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+          {/* 5. Qty */}
+          <div className="form-field-group">
+            <label className="field-label">Qty</label>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={itemQty}
+              onChange={(e) => setItemQty(e.target.value)}
+              placeholder="1"
+              className="field-input"
             />
           </div>
         </div>
 
-        <button 
-          className="btn btn-primary" 
-          onClick={handleAddItem}
-          style={{ width: '100%', padding: '10px', fontSize: '14px' }}
-        >
-          <Plus size={18} />
-          <span>Add Custom Cake / Bakery Item to Order List</span>
-        </button>
+        {/* Row 2: Description, Greetings *, Greetings *, Greetings info2, Status* */}
+        <div className="order-info-grid-row2">
+          {/* Description */}
+          <div className="form-field-group">
+            <label className="field-label">Description</label>
+            <input
+              type="text"
+              value={itemDescription}
+              onChange={(e) => setItemDescription(e.target.value)}
+              placeholder="Special instructions or notes"
+              className="field-input"
+            />
+          </div>
+
+          {/* Greetings 1 (Occasion) */}
+          <div className="form-field-group">
+            <label className="field-label">
+              Greetings <span className="required-star">*</span>
+            </label>
+            <select
+              value={itemGreeting1}
+              onChange={(e) => setItemGreeting1(e.target.value)}
+              className="field-select"
+            >
+              <option value="None">None</option>
+              <option value="Happy Birthday">Happy Birthday</option>
+              <option value="Happy Anniversary">Happy Anniversary</option>
+              <option value="Congratulations">Congratulations</option>
+              <option value="Best Wishes">Best Wishes</option>
+              <option value="Happy Wedding Day">Happy Wedding Day</option>
+              <option value="Get Well Soon">Get Well Soon</option>
+              <option value="Bon Voyage">Bon Voyage</option>
+            </select>
+          </div>
+
+          {/* Greetings 2 (Milestone / Age) */}
+          <div className="form-field-group">
+            <label className="field-label">
+              Greetings <span className="required-star">*</span>
+            </label>
+            <select
+              value={itemGreeting2}
+              onChange={(e) => setItemGreeting2(e.target.value)}
+              className="field-select"
+            >
+              <option value="None">None</option>
+              <option value="1st">1st</option>
+              <option value="16th">16th</option>
+              <option value="18th">18th</option>
+              <option value="21st">21st</option>
+              <option value="25th">25th</option>
+              <option value="30th">30th</option>
+              <option value="40th">40th</option>
+              <option value="50th">50th</option>
+              <option value="60th">60th</option>
+              <option value="70th">70th</option>
+              <option value="75th">75th</option>
+              <option value="80th">80th</option>
+              <option value="90th">90th</option>
+              <option value="100th">100th</option>
+            </select>
+          </div>
+
+          {/* Greetings info2 (Icing text) */}
+          <div className="form-field-group">
+            <label className="field-label">Greetings info2</label>
+            <input
+              type="text"
+              value={itemGreetingInfo2}
+              onChange={(e) => setItemGreetingInfo2(e.target.value)}
+              placeholder="Icing text on cake"
+              className="field-input"
+            />
+          </div>
+
+          {/* Status */}
+          <div className="form-field-group">
+            <label className="field-label">
+              Status<span className="required-star">*</span>
+            </label>
+            <select
+              value={itemStatus}
+              onChange={(e) => setItemStatus(e.target.value)}
+              className="field-select"
+            >
+              <option value="Pending">Pending</option>
+              <option value="Processing">Processing</option>
+              <option value="Completed">Completed</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Row 3: Add Product Button */}
+        <div style={{ textAlign: 'center', marginTop: '10px' }}>
+          <button
+            type="button"
+            onClick={handleAddProduct}
+            className="btn btn-primary"
+            style={{ minWidth: '160px', padding: '10px 24px' }}
+          >
+            <Plus size={16} />
+            <span>Add Product</span>
+          </button>
+        </div>
       </div>
 
-      {/* ORDER ITEMS TABLE */}
-      <div className="card">
-        <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '14px' }}>Order Line Items</h3>
-        <div className="table-responsive">
-          <table className="pos-table">
+      {/* ========================================================
+          CARD 2: ORDER ITEMS TABLE (Exact trbsys.net Items Grid)
+          ======================================================== */}
+      <div className="category-form-card" style={{ padding: '0', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table className="categories-data-table">
             <thead>
               <tr>
-                <th>#</th>
-                <th>Product Description</th>
-                <th>Cake Greeting / Icing Inscription</th>
-                <th>Qty</th>
-                <th>Unit Price (LKR)</th>
-                <th>Total (LKR)</th>
-                <th>Action</th>
+                <th style={{ minWidth: '240px' }}>Product Name</th>
+                <th style={{ minWidth: '220px' }}>Description</th>
+                <th style={{ minWidth: '80px', textAlign: 'center' }}>Qty</th>
+                <th style={{ minWidth: '120px', textAlign: 'right' }}>Unit Price</th>
+                <th style={{ minWidth: '130px', textAlign: 'right' }}>Total</th>
+                <th style={{ minWidth: '90px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {orderItems.length === 0 ? (
                 <tr>
-                  <td colSpan="7" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
-                    No items added yet. Configure above and click "Add to Order List".
+                  <td colSpan="6" className="empty-table-cell" style={{ padding: '40px' }}>
+                    No products added to this order yet. Use the form above to add items.
                   </td>
                 </tr>
               ) : (
                 orderItems.map((item, idx) => (
-                  <tr key={idx}>
-                    <td>{idx + 1}</td>
-                    <td>
-                      <div style={{ fontWeight: 700 }}>{item.product_name}</div>
-                      <div style={{ fontSize: '12px', color: '#64748b' }}>{item.net_weight}</div>
-                      {item.item_notes && <div style={{ fontSize: '11.5px', color: '#b45309' }}>Note: {item.item_notes}</div>}
+                  <tr key={item.temp_id}>
+                    <td className="cat-name-cell">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#258be0', fontWeight: '700' }}>#{idx + 1}</span>
+                        <span>{item.product_name}</span>
+                      </div>
                     </td>
-                    <td>
-                      {(item.greeting_occasion !== 'None' || item.greeting_icing_text) ? (
-                        <div style={{ background: '#fef3c7', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}>
-                          <span style={{ fontWeight: 700, color: '#b45309' }}>
-                            {item.greeting_milestone !== 'None' ? `${item.greeting_milestone} ` : ''}
-                            {item.greeting_occasion}
-                          </span>
-                          {item.greeting_icing_text && <div style={{ color: '#0f172a', fontWeight: 600 }}>"{item.greeting_icing_text}"</div>}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '12px' }}>Standard</span>
-                      )}
+                    <td className="cat-desc-cell">
+                      <div>
+                        {item.description && <div>{item.description}</div>}
+                        {(item.greeting_occasion || item.greeting_milestone || item.greeting_info2) && (
+                          <div style={{ fontSize: '11.5px', color: '#0284c7', marginTop: '2px', fontWeight: 500 }}>
+                            🎂 {item.greeting_occasion ? item.greeting_occasion : ''} 
+                            {item.greeting_milestone ? ` (${item.greeting_milestone})` : ''} 
+                            {item.greeting_info2 ? ` • "${item.greeting_info2}"` : ''}
+                          </div>
+                        )}
+                      </div>
                     </td>
-                    <td style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>{item.quantity}</td>
-                    <td style={{ fontFamily: 'var(--font-mono)' }}>{item.unit_price.toFixed(2)}</td>
-                    <td style={{ fontWeight: 700, fontFamily: 'var(--font-mono)', color: '#0f172a' }}>{item.total_price.toFixed(2)}</td>
-                    <td>
-                      <button 
-                        onClick={() => handleRemoveItem(idx)}
-                        style={{ border: 'none', background: 'none', color: '#e11d48', cursor: 'pointer' }}
-                        title="Delete item"
+                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{item.quantity}</td>
+                    <td style={{ textAlign: 'right', fontWeight: 600 }}>
+                      {Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                      {Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(item.temp_id)}
+                        className="btn-cat-action btn-cat-delete"
+                        title="Remove Item"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={15} />
                       </button>
                     </td>
                   </tr>
                 ))
               )}
             </tbody>
+            {orderItems.length > 0 && (
+              <tfoot>
+                <tr style={{ backgroundColor: '#f8fafc', borderTop: '2px solid #e2e8f0' }}>
+                  <td colSpan="4" style={{ textAlign: 'right', fontWeight: 800, fontSize: '14px', color: '#0f172a', padding: '14px 16px' }}>
+                    Total :
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 800, fontSize: '16px', color: '#258be0', padding: '14px 16px' }}>
+                    Rs. {subTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
 
-      {/* BILLING TOTALS & PAYMENT SETTLEMENT */}
-      <div className="card" style={{ background: '#f8fafc' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px', alignItems: 'center' }}>
-          {/* Bill Total */}
-          <div>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Total Amount</span>
-            <div style={{ fontSize: '24px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: '#0f172a' }}>
-              LKR {totalAmount.toFixed(2)}
+      <form onSubmit={handleSubmitOrder}>
+        {/* ========================================================
+            CARD 3: FILL CUSTOMER INFORMATION TO CREATE ORDER
+            ======================================================== */}
+        <div className="category-form-card">
+          <div className="category-form-header">
+            <h3 className="category-form-title">FILL CUSTOMER INFORMATION TO CREATE ORDER</h3>
+            <p className="category-form-subtitle">Enter customer contact details, delivery date, time, and address</p>
+          </div>
+
+          {/* Row 1: Title, First Name*, Mobile*, Telephone, Ordered By */}
+          <div className="order-customer-grid-row1">
+            {/* Title */}
+            <div className="form-field-group">
+              <label className="field-label">Title</label>
+              <select
+                value={custTitle}
+                onChange={(e) => setCustTitle(e.target.value)}
+                className="field-select"
+              >
+                <option value="Mr">Mr</option>
+                <option value="Mrs">Mrs</option>
+                <option value="Miss">Miss</option>
+                <option value="Dr">Dr</option>
+                <option value="Rev">Rev</option>
+              </select>
+            </div>
+
+            {/* First Name* */}
+            <div className="form-field-group">
+              <label className="field-label">
+                First Name<span className="required-star">*</span>
+              </label>
+              <input
+                type="text"
+                value={custFirstName}
+                onChange={(e) => setCustFirstName(e.target.value)}
+                placeholder="Enter customer name"
+                className="field-input"
+                required
+              />
+            </div>
+
+            {/* Mobile* (With Live Search Autocomplete) */}
+            <div className="form-field-group autocomplete-wrapper" ref={mobileInputRef}>
+              <label className="field-label">
+                Mobile<span className="required-star">*</span>
+              </label>
+              <input
+                type="text"
+                value={custMobile}
+                onChange={(e) => {
+                  setCustMobile(e.target.value);
+                  setSelectedCustomerId(null);
+                }}
+                onFocus={() => {
+                  if (mobileSuggestions.length > 0) setShowMobileDropdown(true);
+                }}
+                placeholder="07XXXXXXXX"
+                className="field-input"
+                required
+              />
+              {/* Autocomplete Dropdown */}
+              {showMobileDropdown && mobileSuggestions.length > 0 && (
+                <div className="autocomplete-dropdown">
+                  {mobileSuggestions.map(c => (
+                    <div
+                      key={c.customer_id}
+                      className="autocomplete-item"
+                      onClick={() => handleSelectCustomer(c)}
+                    >
+                      <span className="autocomplete-item-name">{c.title ? `${c.title} ` : ''}{c.first_name}</span>
+                      <span className="autocomplete-item-mobile">{c.mobile}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Telephone */}
+            <div className="form-field-group">
+              <label className="field-label">Telephone</label>
+              <input
+                type="text"
+                value={custTelephone}
+                onChange={(e) => setCustTelephone(e.target.value)}
+                placeholder="Landline (optional)"
+                className="field-input"
+              />
+            </div>
+
+            {/* Ordered By (Readonly) */}
+            <div className="form-field-group">
+              <label className="field-label">Ordered By</label>
+              <input
+                type="text"
+                value={user?.user_name || user?.full_name || 'Admin'}
+                readOnly
+                className="field-input field-input-readonly"
+              />
             </div>
           </div>
 
-          {/* Advance Deposit Paid */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#059669', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-              Advance Deposit Paid*
-            </label>
-            <input 
-              type="number" 
-              placeholder="0.00"
-              value={advanceAmount}
-              onChange={(e) => setAdvanceAmount(e.target.value)}
-              style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '2px solid #059669', fontWeight: 700, fontFamily: 'var(--font-mono)', fontSize: '16px' }}
-            />
+          {/* Row 2: Date of Delivery, Time, Delivery Address */}
+          <div className="order-customer-grid-row2">
+            {/* Date of Delivery */}
+            <div className="form-field-group">
+              <label className="field-label">
+                Date of Delivery<span className="required-star">*</span>
+              </label>
+              <input
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => {
+                  setDeliveryDate(e.target.value);
+                  if (!manufactureDate || manufactureDate === deliveryDate) {
+                    setManufactureDate(e.target.value);
+                  }
+                }}
+                min={todayStr}
+                className="field-input"
+                required
+              />
+            </div>
+
+            {/* Time */}
+            <div className="form-field-group">
+              <label className="field-label">Time</label>
+              <input
+                type="time"
+                value={deliveryTime}
+                onChange={(e) => setDeliveryTime(e.target.value)}
+                className="field-input"
+              />
+            </div>
+
+            {/* Delivery Address */}
+            <div className="form-field-group">
+              <label className="field-label">Delivery Address</label>
+              <input
+                type="text"
+                value={deliveryAddress}
+                onChange={(e) => setDeliveryAddress(e.target.value)}
+                placeholder="Enter address for delivery (leave blank for showroom pickup)"
+                className="field-input"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* ========================================================
+            CARD 4: FILL PAYMENT INFORMATION
+            ======================================================== */}
+        <div className="category-form-card">
+          <div className="category-form-header">
+            <h3 className="category-form-title">FILL PAYMENT INFORMATION</h3>
+            <p className="category-form-subtitle">Record advance deposits, discounts, and calculate live balances</p>
           </div>
 
-          {/* Balance Remaining */}
-          <div>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#b45309', textTransform: 'uppercase' }}>Balance Due on Pickup</span>
-            <div style={{ fontSize: '24px', fontWeight: 800, fontFamily: 'var(--font-mono)', color: balanceAmount > 0 ? '#b45309' : '#64748b' }}>
-              LKR {balanceAmount.toFixed(2)}
+          {/* Row 1: Payment Type*, Discount (%), Manufacture Date, Advance, Service Charge(%), Delivery Charge */}
+          <div className="order-payment-grid">
+            {/* Payment Type* */}
+            <div className="form-field-group">
+              <label className="field-label">
+                Payment Type<span className="required-star">*</span>
+              </label>
+              <select
+                value={paymentType}
+                onChange={(e) => setPaymentType(e.target.value)}
+                className="field-select"
+              >
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="Online Transfer">Online Transfer</option>
+                <option value="Credit">Credit</option>
+                <option value="Cheque">Cheque</option>
+              </select>
+            </div>
+
+            {/* Discount (%) */}
+            <div className="form-field-group">
+              <label className="field-label">Discount (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={discountPercent}
+                onChange={(e) => setDiscountPercent(e.target.value)}
+                placeholder="0"
+                className="field-input"
+              />
+            </div>
+
+            {/* Manufacture Date */}
+            <div className="form-field-group">
+              <label className="field-label">Manufacture Date</label>
+              <input
+                type="date"
+                value={manufactureDate}
+                onChange={(e) => setManufactureDate(e.target.value)}
+                className="field-input"
+              />
+            </div>
+
+            {/* Advance */}
+            <div className="form-field-group">
+              <label className="field-label">Advance (Deposit)</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={advanceAmount}
+                onChange={(e) => setAdvanceAmount(e.target.value)}
+                placeholder="0.00"
+                className="field-input"
+              />
+            </div>
+
+            {/* Service Charge(%) */}
+            <div className="form-field-group">
+              <label className="field-label">Service Charge(%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="any"
+                value={serviceChargePercent}
+                onChange={(e) => setServiceChargePercent(e.target.value)}
+                placeholder="0"
+                className="field-input"
+              />
+            </div>
+
+            {/* Delivery Charge */}
+            <div className="form-field-group">
+              <label className="field-label">Delivery Charge</label>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={deliveryCharge}
+                onChange={(e) => setDeliveryCharge(e.target.value)}
+                placeholder="0.00"
+                className="field-input"
+              />
             </div>
           </div>
 
-          {/* Payment Method */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', display: 'block', marginBottom: '4px' }}>
-              Payment Method
-            </label>
-            <select 
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              style={{ width: '100%', padding: '9px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600 }}
+          {/* Financial Summary Strip */}
+          <div className="order-financial-strip">
+            <div className="financial-metric">
+              <span className="financial-metric-label">Sub Total</span>
+              <span className="financial-metric-value">
+                Rs. {subTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            {discountAmount > 0 && (
+              <div className="financial-metric">
+                <span className="financial-metric-label">Discount ({discountPctNum}%)</span>
+                <span className="financial-metric-value" style={{ color: '#10b981' }}>
+                  - Rs. {discountAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+
+            {serviceChargeAmount > 0 && (
+              <div className="financial-metric">
+                <span className="financial-metric-label">Service Charge ({serviceChargePctNum}%)</span>
+                <span className="financial-metric-value">
+                  + Rs. {serviceChargeAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+
+            {deliveryChargeNum > 0 && (
+              <div className="financial-metric">
+                <span className="financial-metric-label">Delivery Fee</span>
+                <span className="financial-metric-value">
+                  + Rs. {deliveryChargeNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            )}
+
+            <div className="financial-metric">
+              <span className="financial-metric-label">Net Total</span>
+              <span className="financial-metric-value highlight-total">
+                Rs. {netTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="financial-metric">
+              <span className="financial-metric-label">Advance Paid</span>
+              <span className="financial-metric-value highlight-paid">
+                Rs. {advanceAmountNum.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+
+            <div className="financial-metric">
+              <span className="financial-metric-label">Balance Due</span>
+              <span className="financial-metric-value highlight-balance">
+                Rs. {balanceDue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </div>
+          </div>
+
+          {/* Row 2: Action Buttons (Submit & Reset) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn btn-primary"
+              style={{ minWidth: '140px', padding: '10px 24px' }}
             >
-              <option>Cash</option>
-              <option>Card / POS</option>
-              <option>Bank Transfer</option>
-            </select>
+              {saving ? 'Creating Order...' : 'Submit'}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="btn btn-teal"
+              style={{ minWidth: '140px', padding: '10px 24px' }}
+            >
+              <RotateCcw size={15} />
+              <span>Reset</span>
+            </button>
           </div>
         </div>
+      </form>
 
-        {/* ACTION BUTTONS */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '14px', marginTop: '20px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
-          <button className="btn btn-secondary" onClick={handleReset}>
-            <span>Cancel</span>
-          </button>
-          <button 
-            className="btn btn-primary" 
-            onClick={handleSaveOrder}
-            disabled={saving}
-            style={{ padding: '12px 28px', fontSize: '15px' }}
-          >
-            <Printer size={18} />
-            <span>{saving ? 'Processing...' : 'Save & Print 80mm Slip (F9)'}</span>
-          </button>
+      {/* ========================================================
+          ORDER SUCCESS MODAL / RECEIPT CONFIRMATION
+          ======================================================== */}
+      {orderSuccessModal && (
+        <div className="order-modal-backdrop">
+          <div className="order-modal-box">
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+              <div style={{
+                width: '56px',
+                height: '56px',
+                borderRadius: '50%',
+                backgroundColor: '#ecfdf5',
+                color: '#10b981',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '12px'
+              }}>
+                <CheckCircle2 size={32} />
+              </div>
+              <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px 0' }}>
+                Order Placed Successfully!
+              </h2>
+              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+                Order #{orderSuccessModal.order_number} has been queued into kitchen production
+              </p>
+            </div>
+
+            <div style={{
+              backgroundColor: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: '10px',
+              padding: '16px 20px',
+              marginBottom: '24px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                <span style={{ color: '#64748b' }}>Order Number:</span>
+                <span style={{ fontWeight: '700', color: '#258be0' }}>{orderSuccessModal.order_number}</span>
+              </div>
+              {orderSuccessModal.receipt_no && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>Advance Receipt No:</span>
+                  <span style={{ fontWeight: '700', color: '#10b981' }}>{orderSuccessModal.receipt_no}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                <span style={{ color: '#64748b' }}>Customer:</span>
+                <span style={{ fontWeight: '600', color: '#0f172a' }}>{orderSuccessModal.customer_name} ({orderSuccessModal.customer_mobile})</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                <span style={{ color: '#64748b' }}>Delivery Schedule:</span>
+                <span style={{ fontWeight: '600', color: '#0f172a' }}>{orderSuccessModal.delivery_date} at {orderSuccessModal.delivery_time}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                <span style={{ color: '#64748b' }}>Items Count:</span>
+                <span style={{ fontWeight: '600', color: '#0f172a' }}>{orderSuccessModal.items_count} items</span>
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px solid #e2e8f0', margin: '10px 0' }} />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span style={{ color: '#64748b', fontWeight: '600' }}>Total Amount:</span>
+                <span style={{ fontWeight: '800', color: '#0f172a' }}>
+                  Rs. {orderSuccessModal.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '14px' }}>
+                <span style={{ color: '#64748b', fontWeight: '600' }}>Advance Paid:</span>
+                <span style={{ fontWeight: '800', color: '#10b981' }}>
+                  Rs. {orderSuccessModal.advance_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
+                <span style={{ color: '#64748b', fontWeight: '700' }}>Balance Due:</span>
+                <span style={{ fontWeight: '800', color: orderSuccessModal.balance_amount > 0 ? '#f43f5e' : '#10b981' }}>
+                  Rs. {orderSuccessModal.balance_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="btn btn-secondary"
+                style={{ padding: '10px 18px' }}
+              >
+                <Printer size={16} />
+                <span>Print Bill</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setOrderSuccessModal(null)}
+                className="btn btn-primary"
+                style={{ padding: '10px 18px' }}
+              >
+                <Plus size={16} />
+                <span>Create Another Order</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/manage_orders')}
+                className="btn btn-cancel"
+                style={{ padding: '10px 18px' }}
+              >
+                <FileText size={16} />
+                <span>Manage Orders</span>
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
-

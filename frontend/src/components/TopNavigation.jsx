@@ -198,8 +198,15 @@ export default function TopNavigation() {
             </div>
           </div>
 
-          {/* 3. ORDERS (Dropdown) */}
-          <div className={`sub-nav-tab dropdown-parent ${isOrdersActive ? 'active' : ''}`}>
+          {/* 3. ORDERS (Dropdown - clicking parent tab navigates to /add-order) */}
+          <div 
+            className={`sub-nav-tab dropdown-parent ${isOrdersActive ? 'active' : ''}`}
+            onClick={(e) => {
+              if (e.target.closest('.dropdown-panel')) return;
+              navigate('/add-order');
+            }}
+            style={{ cursor: 'pointer' }}
+          >
             <div className="sub-nav-icon">
               <Building2 size={18} />
             </div>
