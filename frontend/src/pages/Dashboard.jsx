@@ -227,59 +227,79 @@ export default function Dashboard() {
             </button>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="data-table">
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
+            <table className="categories-data-table">
               <thead>
                 <tr>
-                  <th>Order #</th>
-                  <th>Customer</th>
-                  <th>Delivery Date & Time</th>
-                  <th>Type</th>
-                  <th>Total (LKR)</th>
-                  <th>Advance</th>
-                  <th>Balance</th>
-                  <th>Status</th>
+                  <th style={{ minWidth: '150px' }}>Order #</th>
+                  <th style={{ minWidth: '180px' }}>Customer</th>
+                  <th style={{ minWidth: '170px' }}>Delivery Schedule</th>
+                  <th style={{ minWidth: '130px', textAlign: 'center' }}>Type</th>
+                  <th style={{ minWidth: '120px', textAlign: 'right' }}>Total (LKR)</th>
+                  <th style={{ minWidth: '120px', textAlign: 'right' }}>Advance</th>
+                  <th style={{ minWidth: '120px', textAlign: 'right' }}>Balance</th>
+                  <th style={{ minWidth: '130px', textAlign: 'center' }}>Status</th>
+                  <th style={{ minWidth: '90px', textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {recentOrders.map((ord) => (
-                  <tr key={ord.order_id}>
-                    <td style={{ fontWeight: 700, color: '#0f172a' }}>{ord.order_number}</td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{ord.customer_name}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{ord.mobile}</div>
-                    </td>
-                    <td>
-                      <div>{new Date(ord.delivery_date).toLocaleDateString()}</div>
-                      <div style={{ fontSize: '11px', color: '#d97706', fontWeight: 600 }}>
-                        <Clock size={11} style={{ display: 'inline', marginRight: '3px' }} />
-                        {ord.delivery_time}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${ord.delivery_type === 'Delivery' ? 'badge-info' : 'badge-neutral'}`}>
-                        {ord.delivery_type}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 700 }}>
-                      Rs. {parseFloat(ord.total_amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ color: '#059669', fontWeight: 600 }}>
-                      Rs. {parseFloat(ord.advance_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ color: ord.balance_amount > 0 ? '#dc2626' : '#059669', fontWeight: 700 }}>
-                      Rs. {parseFloat(ord.balance_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td>
-                      <span className={`badge ${
-                        ord.order_status === 'Delivered' ? 'badge-success' :
-                        ord.order_status === 'Cancelled' ? 'badge-danger' : 'badge-warning'
-                      }`}>
-                        {ord.order_status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {recentOrders.map((ord) => {
+                  const delDate = ord.delivery_date 
+                    ? new Date(ord.delivery_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                    : '-';
+                  const isPickup = (ord.delivery_type || '').toLowerCase().includes('pickup') || (ord.delivery_type || '').toLowerCase().includes('showroom');
+                  const statusRaw = (ord.order_status || 'Pending').toLowerCase().replace(/\s+/g, '-');
+                  
+                  return (
+                    <tr key={ord.order_id}>
+                      <td style={{ fontWeight: 700, color: '#0f172a' }}>
+                        <span style={{ color: '#258be0', marginRight: '4px' }}>#</span>
+                        {ord.order_number}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{ord.customer_name || 'Walk-in Customer'}</div>
+                        <div style={{ fontSize: '12px', color: '#64748b' }}>{ord.customer_mobile || ord.mobile || '-'}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: 600, color: '#1e293b' }}>{delDate}</div>
+                        <div style={{ fontSize: '11.5px', color: '#d97706', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                          <Clock size={12} />
+                          <span>{ord.delivery_time || '11:00 AM'}</span>
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`trb-badge ${isPickup ? 'trb-badge-pickup' : 'trb-badge-delivery'}`}>
+                          {ord.delivery_type || 'Showroom Pickup'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right', fontWeight: 700, color: '#0f172a' }}>
+                        Rs. {parseFloat(ord.total_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'right', color: '#059669', fontWeight: 600 }}>
+                        Rs. {parseFloat(ord.advance_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'right', color: parseFloat(ord.balance_amount || 0) > 0 ? '#e11d48' : '#059669', fontWeight: 700 }}>
+                        Rs. {parseFloat(ord.balance_amount || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`trb-badge trb-badge-${statusRaw}`}>
+                          <span className="trb-badge-dot"></span>
+                          {ord.order_status || 'Pending'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => navigate('/manage_orders')}
+                          className="btn-cat-action btn-cat-edit"
+                          title="Manage Order"
+                        >
+                          <ArrowRight size={15} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
