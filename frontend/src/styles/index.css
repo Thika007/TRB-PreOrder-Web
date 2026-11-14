@@ -936,7 +936,7 @@ button, input, select, textarea {
 .sub-nav-clock-widget {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   padding: 6px 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -953,32 +953,40 @@ button, input, select, textarea {
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
-.digital-clock-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background-color: #eff6ff;
-  color: #258be0;
-  border: 1px solid #dbeafe;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 .digital-clock-body {
   display: flex;
   flex-direction: column;
+  align-items: center;
+}
+
+.digital-clock-date-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64748b;
+  margin-bottom: 2px;
+  letter-spacing: 0.02em;
+}
+
+.digital-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #10b981;
+  animation: pulseDot 2s infinite ease-in-out;
 }
 
 .digital-clock-time-line {
   display: flex;
   align-items: baseline;
-  gap: 6px;
+  gap: 5px;
 }
 
-.digital-clock-digits {
-  font-size: 20px;
+.digital-clock-digits,
+.digital-clock-ampm {
+  font-size: 21px;
   font-weight: 800;
   font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   font-variant-numeric: tabular-nums;
@@ -988,34 +996,9 @@ button, input, select, textarea {
 }
 
 .digital-clock-ampm {
-  font-size: 10.5px;
-  font-weight: 800;
-  color: #258be0;
-  background-color: #eff6ff;
-  border: 1px solid #bfdbfe;
-  padding: 1.5px 5.5px;
-  border-radius: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  line-height: 1;
-}
-
-.digital-clock-date-line {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-  margin-top: 2px;
-}
-
-.digital-live-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #10b981;
-  animation: pulseDot 2s infinite ease-in-out;
+  background: none;
+  border: none;
+  padding: 0;
 }
 
 @media (max-width: 1200px) {

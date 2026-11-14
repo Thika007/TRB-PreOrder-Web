@@ -10,7 +10,6 @@ import {
   BarChart3, 
   MessageSquareText, 
   Truck, 
-  Clock, 
   LogOut 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -31,7 +30,7 @@ export default function TopNavigation() {
   // Format digital clock display
   const rawTimeString = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   const [timeDigits, ampm = ''] = rawTimeString.split(' ');
-  const dateFormatted = time.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
+  const dateFormatted = time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out of your counter session?')) {
@@ -337,17 +336,14 @@ export default function TopNavigation() {
 
         {/* RIGHT SIDE: MODERN DIGITAL CLOCK WIDGET */}
         <div className="sub-nav-clock-widget" title="Current POS Station Time">
-          <div className="digital-clock-icon-wrap">
-            <Clock size={17} />
-          </div>
           <div className="digital-clock-body">
-            <div className="digital-clock-time-line">
-              <span className="digital-clock-digits">{timeDigits}</span>
-              {ampm && <span className="digital-clock-ampm">{ampm}</span>}
-            </div>
             <div className="digital-clock-date-line">
               <span className="digital-live-pulse-dot"></span>
               <span>{dateFormatted}</span>
+            </div>
+            <div className="digital-clock-time-line">
+              <span className="digital-clock-digits">{timeDigits}</span>
+              {ampm && <span className="digital-clock-ampm">{ampm}</span>}
             </div>
           </div>
         </div>
