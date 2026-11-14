@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { ChefHat, Calendar, Printer, CheckCircle, RefreshCw } from 'lucide-react';
 import axios from 'axios';
+import { useToast } from '../../context/ToastContext';
 
 export default function ChefReports() {
+  const { showSuccess, showError } = useToast();
   const [worksheet, setWorksheet] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().slice(0, 10));
   const [selectedChef, setSelectedChef] = useState('All');
@@ -29,9 +31,10 @@ export default function ChefReports() {
   const handleUpdateStatus = async (productionId, newStatus) => {
     try {
       await axios.put(`/api/kitchen/status/${productionId}`, { status: newStatus });
+      showSuccess(`Kitchen status updated to "${newStatus}"`, 'Status Updated');
       fetchWorksheet();
     } catch (err) {
-      alert('Failed to update kitchen status');
+      showError('Failed to update kitchen status: ' + (err.response?.data?.error || err.message), 'Update Failed');
     }
   };
 

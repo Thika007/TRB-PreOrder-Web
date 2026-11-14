@@ -648,14 +648,13 @@ router.put('/:id', async (req, res) => {
 
         await transaction.begin();
 
-        // 1. Fetch current order & customer
+        // 1. Fetch current order
         const checkReq = new sql.Request(transaction);
         checkReq.input('orderId', sql.Int, orderId);
         const checkRes = await checkReq.query(`
-            SELECT o.*, c.customer_id
-            FROM dbo.Orders o
-            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
-            WHERE o.order_id = @orderId
+            SELECT order_id, order_number, customer_id, delivery_date, delivery_time, delivery_type, delivery_address, order_status
+            FROM dbo.Orders
+            WHERE order_id = @orderId
         `);
 
         if (checkRes.recordset.length === 0) {
@@ -664,6 +663,9 @@ router.put('/:id', async (req, res) => {
         }
 
         const currentOrder = checkRes.recordset[0];
+        const resolvedCustId = Array.isArray(currentOrder.customer_id) 
+            ? parseInt(currentOrder.customer_id[0], 10) 
+            : parseInt(currentOrder.customer_id, 10);
 
         // 2. Update Order
         const updateOrderReq = new sql.Request(transaction);
@@ -686,9 +688,9 @@ router.put('/:id', async (req, res) => {
         `);
 
         // 3. Update customer if provided
-        if (customer_name || customer_mobile) {
+        if ((customer_name || customer_mobile) && resolvedCustId) {
             const updateCustReq = new sql.Request(transaction);
-            updateCustReq.input('custId', sql.Int, currentOrder.customer_id);
+            updateCustReq.input('custId', sql.Int, resolvedCustId);
             updateCustReq.input('first_name', sql.NVarChar(100), customer_name || 'Walk-in Customer');
             updateCustReq.input('mobile', sql.VarChar(20), customer_mobile);
             await updateCustReq.query(`

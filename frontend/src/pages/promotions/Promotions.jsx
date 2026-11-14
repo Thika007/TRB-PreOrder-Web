@@ -1,7 +1,9 @@
 import React from 'react';
 import { MessageSquare, Send, Users } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 
 export default function Promotions() {
+  const { showInfo } = useToast();
   return (
     <div className="card" style={{ maxWidth: '700px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
@@ -30,7 +32,7 @@ export default function Promotions() {
         ></textarea>
       </div>
 
-      <button className="btn btn-primary" onClick={() => alert('SMS Gateway integration configured for production delivery.')}>
+      <button className="btn btn-primary" onClick={() => showInfo('SMS Gateway integration configured for production delivery.', 'Promotional Broadcast')}>
         <Send size={16} />
         <span>Send Promotional Broadcast</span>
       </button>

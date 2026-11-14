@@ -20,8 +20,10 @@ import {
   Download
 } from 'lucide-react';
 import axios from 'axios';
+import { useToast } from '../../context/ToastContext';
 
 export default function ManageOrders() {
+  const { showSuccess, showError } = useToast();
   const [orders, setOrders] = useState([]);
   const [totalAmountSum, setTotalAmountSum] = useState(0);
   const [statusFilter, setStatusFilter] = useState('Show all');
@@ -164,12 +166,12 @@ export default function ManageOrders() {
       });
 
       if (res.data.success) {
-        alert(`Payment Recorded!\nReceipt No: ${res.data.receipt_no}\nRemaining Balance: LKR ${parseFloat(res.data.remaining_balance).toFixed(2)}`);
+        showSuccess(`Payment Recorded! Receipt No: ${res.data.receipt_no} | Remaining Balance: LKR ${parseFloat(res.data.remaining_balance).toFixed(2)}`, 'Payment Recorded');
         setActivePaymentOrder(null);
         fetchOrders();
       }
     } catch (err) {
-      alert('Payment failed: ' + (err.response?.data?.error || err.message));
+      showError(err.response?.data?.error || err.message, 'Payment Failed');
     } finally {
       setPaying(false);
     }
@@ -223,12 +225,12 @@ export default function ManageOrders() {
     try {
       const res = await axios.put(`/api/orders/${editingOrder.order_id}`, editFormData);
       if (res.data.success) {
-        alert(`Order #${editingOrder.order_number} updated successfully!`);
+        showSuccess(`Order #${editingOrder.order_number} updated successfully!`, 'Order Updated');
         setEditingOrder(null);
         fetchOrders();
       }
     } catch (err) {
-      alert('Failed to update order: ' + (err.response?.data?.error || err.message));
+      showError('Failed to update order: ' + (err.response?.data?.error || err.message), 'Update Failed');
     } finally {
       setSavingEdit(false);
     }
@@ -247,12 +249,12 @@ export default function ManageOrders() {
         reason: 'Cancelled from Manage Orders by cashier'
       });
       if (res.data.success) {
-        alert(`Order #${cancellingOrder.order_number} has been cancelled.`);
+        showSuccess(`Order #${cancellingOrder.order_number} has been cancelled.`, 'Order Cancelled');
         setCancellingOrder(null);
         fetchOrders();
       }
     } catch (err) {
-      alert('Cancellation failed: ' + (err.response?.data?.error || err.message));
+      showError('Cancellation failed: ' + (err.response?.data?.error || err.message), 'Cancellation Failed');
     } finally {
       setCancelling(false);
     }
