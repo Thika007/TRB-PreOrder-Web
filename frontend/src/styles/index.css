@@ -1446,6 +1446,14 @@ button, input, select, textarea {
 .kpi-footer-row .icon-amber { color: #d97706; }
 .kpi-footer-row .icon-emerald { color: #059669; }
 
+@keyframes trb-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.trb-spin {
+  animation: trb-spin 0.8s linear infinite;
+}
+
 /* Legacy trb-stat-card support */
 .trb-stat-card {
   background-color: #ffffff;

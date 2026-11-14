@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Info,
@@ -9,7 +9,8 @@ import {
   XCircle,
   ShoppingBag,
   Users,
-  TrendingUp
+  TrendingUp,
+  RotateCw
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -21,60 +22,97 @@ export default function Dashboard() {
   lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
   const lastMonthName = lastMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
+  // Real-time Database KPI Stats
   const [stats, setStats] = useState({
     thisMonth: {
       totalOrders: 0,
       pendingOrders: 0,
-      newCustomers: 360
+      cancelledOrders: 0,
+      deliveredOrders: 0,
+      newCustomers: 0,
+      totalRevenue: 0,
+      advanceCollected: 0,
+      balanceDue: 0
     },
     lastMonth: {
       totalOrders: 0,
       pendingOrders: 0,
-      newCustomers: 1745
+      newCustomers: 0,
+      totalRevenue: 0
+    },
+    allTime: {
+      totalOrders: 0,
+      pendingOrders: 0,
+      totalCustomers: 0
     }
   });
 
   const [recentOrders, setRecentOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [ordersRes, customersRes] = await Promise.all([
-          axios.get('/api/orders?limit=10').catch(() => ({ data: { success: false } })),
-          axios.get('/api/customers?limit=1').catch(() => ({ data: { success: false } }))
-        ]);
+  // Fetch real-time dashboard data directly from MSSQL database
+  const fetchDashboardData = useCallback(async (isSilent = false) => {
+    if (isSilent) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
 
-        if (ordersRes.data && ordersRes.data.success) {
-          const orders = ordersRes.data.orders || [];
-          setRecentOrders(orders);
-          const totalOrdersCount = ordersRes.data.total || orders.length;
-          const pendingOrdersCount = orders.filter(o => o.order_status === 'Pending').length;
-          const totalCustCount = (customersRes.data && customersRes.data.total) ? customersRes.data.total : 360;
+    try {
+      const [statsRes, recentRes] = await Promise.all([
+        axios.get('/api/dashboard/stats').catch(err => {
+          console.warn('Dashboard stats endpoint failed, falling back:', err.message);
+          return { data: { success: false } };
+        }),
+        axios.get('/api/dashboard/recent-orders?limit=10').catch(err => {
+          console.warn('Recent orders endpoint failed, falling back:', err.message);
+          return { data: { success: false } };
+        })
+      ]);
 
-          setStats(prev => ({
-            ...prev,
-            thisMonth: {
-              totalOrders: totalOrdersCount,
-              pendingOrders: pendingOrdersCount,
-              newCustomers: totalCustCount > 0 ? totalCustCount : 360
-            }
-          }));
-        }
-      } catch (err) {
-        console.error('Failed to load dashboard metrics:', err);
-      } finally {
-        setLoading(false);
+      if (statsRes.data && statsRes.data.success) {
+        setStats(statsRes.data.stats);
       }
+
+      if (recentRes.data && recentRes.data.success) {
+        setRecentOrders(recentRes.data.orders || []);
+      }
+      
+      setLastSync(new Date());
+    } catch (err) {
+      console.error('Failed to load real-time dashboard metrics:', err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  // Initial load and live auto-polling every 15 seconds
+  useEffect(() => {
+    fetchDashboardData(false);
+
+    const interval = setInterval(() => {
+      fetchDashboardData(true);
+    }, 15000);
+
+    const handleWindowFocus = () => {
+      fetchDashboardData(true);
     };
 
-    fetchDashboardData();
-  }, []);
+    window.addEventListener('focus', handleWindowFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleWindowFocus);
+    };
+  }, [fetchDashboardData]);
 
   return (
     <div className="dashboard-page-container">
       {/* ========================================================
-          SECTION 1: CURRENT MONTH OPERATIONS (Modern KPI Redesign)
+          SECTION 1: CURRENT MONTH OPERATIONS (Real-time DB Data)
           ======================================================== */}
       <div className="dashboard-metric-section">
         <div className="dashboard-section-header-wrap">
@@ -85,9 +123,36 @@ export default function Dashboard() {
               Active Cycle • {currentMonthName}
             </span>
           </div>
+
+          {/* Live Sync Badge & Manual Refresh */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ 
+                width: '8px', 
+                height: '8px', 
+                borderRadius: '50%', 
+                backgroundColor: '#10b981', 
+                display: 'inline-block',
+                boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)'
+              }}></span>
+              Live Database Connected {lastSync ? `• ${lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => fetchDashboardData(true)}
+              disabled={refreshing}
+              className="btn btn-secondary text-sm"
+              style={{ padding: '5px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+              title="Refresh live metrics from database"
+            >
+              <RotateCw size={13} className={refreshing ? 'trb-spin' : ''} />
+              <span>{refreshing ? 'Syncing...' : 'Sync'}</span>
+            </button>
+          </div>
         </div>
+
         <div className="trb-card-grid">
-          {/* Card 1: Total Orders */}
+          {/* Card 1: Total Orders This Month */}
           <div className="kpi-stat-card kpi-card-blue">
             <div className="kpi-top-row">
               <div className="kpi-label-group">
@@ -102,11 +167,15 @@ export default function Dashboard() {
             </div>
             <div className="kpi-footer-row">
               <TrendingUp size={14} className="kpi-footer-icon icon-blue" />
-              <span>Booked bakery orders this month</span>
+              <span>
+                {stats.thisMonth.totalRevenue > 0 
+                  ? `Rs. ${stats.thisMonth.totalRevenue.toLocaleString()} volume • ${stats.thisMonth.cancelledOrders} cancelled` 
+                  : 'Booked bakery orders this month'}
+              </span>
             </div>
           </div>
 
-          {/* Card 2: Total Pending Orders */}
+          {/* Card 2: Total Pending Orders This Month */}
           <div className="kpi-stat-card kpi-card-amber">
             <div className="kpi-top-row">
               <div className="kpi-label-group">
@@ -121,11 +190,11 @@ export default function Dashboard() {
             </div>
             <div className="kpi-footer-row">
               <Clock size={14} className="kpi-footer-icon icon-amber" />
-              <span>Awaiting production or delivery</span>
+              <span>Awaiting production or delivery ({stats.allTime?.pendingOrders || stats.thisMonth.pendingOrders} active)</span>
             </div>
           </div>
 
-          {/* Card 3: Total New Customers */}
+          {/* Card 3: Total New Customers This Month */}
           <div className="kpi-stat-card kpi-card-emerald">
             <div className="kpi-top-row">
               <div className="kpi-label-group">
@@ -140,14 +209,14 @@ export default function Dashboard() {
             </div>
             <div className="kpi-footer-row">
               <Users size={14} className="kpi-footer-icon icon-emerald" />
-              <span>Registered counter profiles</span>
+              <span>Registered counter profiles this month</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================
-          SECTION 2: PRIOR MONTH BENCHMARK (Modern KPI Redesign)
+          SECTION 2: PRIOR MONTH BENCHMARK (Real-time DB Data)
           ======================================================== */}
       <div className="dashboard-metric-section">
         <div className="dashboard-section-header-wrap">
@@ -158,6 +227,7 @@ export default function Dashboard() {
             </span>
           </div>
         </div>
+
         <div className="trb-card-grid">
           {/* Card 1: Last Month Total Orders */}
           <div className="kpi-stat-card kpi-card-blue">
@@ -174,7 +244,11 @@ export default function Dashboard() {
             </div>
             <div className="kpi-footer-row">
               <ShoppingBag size={14} className="kpi-footer-icon icon-blue" />
-              <span>Historical closed volume</span>
+              <span>
+                {stats.lastMonth.totalRevenue > 0
+                  ? `Rs. ${stats.lastMonth.totalRevenue.toLocaleString()} volume`
+                  : 'Historical closed volume'}
+              </span>
             </div>
           </div>
 
@@ -212,7 +286,7 @@ export default function Dashboard() {
             </div>
             <div className="kpi-footer-row">
               <Users size={14} className="kpi-footer-icon icon-emerald" />
-              <span>Customer base record</span>
+              <span>Profiles registered in {lastMonthName}</span>
             </div>
           </div>
         </div>

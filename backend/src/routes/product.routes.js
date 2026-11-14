@@ -572,12 +572,12 @@ router.get('/', async (req, res) => {
             params.push({ name: 'exactSearch', type: sql.VarChar(20), value: search.trim() });
         }
 
-        query += ` ORDER BY p.product_id ASC`;
         const result = await executeQuery(query, params);
+        const sorted = (result.recordset || []).sort((a, b) => a.product_id - b.product_id);
         res.json({
             success: true,
-            count: result.recordset.length,
-            products: result.recordset
+            count: sorted.length,
+            products: sorted
         });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });

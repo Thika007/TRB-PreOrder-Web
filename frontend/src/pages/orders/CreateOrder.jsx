@@ -489,7 +489,7 @@ export default function CreateOrder() {
               className="field-select"
               disabled={loadingCatalog}
             >
-              <option value="">Select M-Product Type</option>
+              <option value="">{loadingCatalog ? 'Loading Categories...' : 'Select M-Product Type'}</option>
               {mainCategories.map(cat => (
                 <option key={cat.main_cat_id} value={cat.main_cat_id}>
                   {cat.category_name}
@@ -505,9 +505,13 @@ export default function CreateOrder() {
               value={itemSubCatId}
               onChange={(e) => setItemSubCatId(e.target.value)}
               className="field-select"
-              disabled={filteredSubCategories.length === 0}
+              disabled={!itemMainCatId || filteredSubCategories.length === 0}
             >
-              <option value="">Select S-Product Type</option>
+              <option value="">
+                {!itemMainCatId 
+                  ? 'Select M-Product Type First' 
+                  : (filteredSubCategories.length === 0 ? 'No Sub-Categories' : 'Select S-Product Type')}
+              </option>
               {filteredSubCategories.map(sub => (
                 <option key={sub.sub_cat_id} value={sub.sub_cat_id}>
                   {sub.sub_category_name}
@@ -525,9 +529,13 @@ export default function CreateOrder() {
               value={itemProductId}
               onChange={(e) => setItemProductId(e.target.value)}
               className="field-select"
-              disabled={filteredProducts.length === 0}
+              disabled={!itemMainCatId || filteredProducts.length === 0}
             >
-              <option value="">Select Product Type</option>
+              <option value="">
+                {!itemMainCatId 
+                  ? 'Select M-Product Type First' 
+                  : (filteredProducts.length === 0 ? 'No Products Found' : 'Select Product Type')}
+              </option>
               {filteredProducts.map(p => (
                 <option key={p.product_id} value={p.product_id}>
                   {p.product_name} {p.net_weight ? `(${p.net_weight})` : ''} - Rs. {Number(p.unit_price).toFixed(0)}

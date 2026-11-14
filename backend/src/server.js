@@ -10,6 +10,7 @@ const customerRoutes = require('./routes/customer.routes');
 const productRoutes = require('./routes/product.routes');
 const orderRoutes = require('./routes/order.routes');
 const kitchenRoutes = require('./routes/kitchen.routes');
+const dashboardRoutes = require('./routes/dashboard.routes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +26,7 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/kitchen', kitchenRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // ========================================================
 // HEALTH CHECK & DATABASE CONNECTIVITY TEST ROUTE
