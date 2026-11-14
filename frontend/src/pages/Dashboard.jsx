@@ -7,12 +7,19 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  ShoppingBag
+  ShoppingBag,
+  Users,
+  TrendingUp
 } from 'lucide-react';
 import axios from 'axios';
 
 export default function Dashboard() {
   const navigate = useNavigate();
+
+  const currentMonthName = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  const lastMonthDate = new Date();
+  lastMonthDate.setMonth(lastMonthDate.getMonth() - 1);
+  const lastMonthName = lastMonthDate.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
   const [stats, setStats] = useState({
     thisMonth: {
@@ -67,94 +74,145 @@ export default function Dashboard() {
   return (
     <div className="dashboard-page-container">
       {/* ========================================================
-          SECTION 1: THIS MONTH ADMIN (Exact Match to trbsys.net)
+          SECTION 1: CURRENT MONTH OPERATIONS (Modern KPI Redesign)
           ======================================================== */}
       <div className="dashboard-metric-section">
-        <h2 className="dashboard-section-heading">This Month admin</h2>
+        <div className="dashboard-section-header-wrap">
+          <div className="dashboard-section-title-group">
+            <h2 className="dashboard-section-heading">Current Month Operations</h2>
+            <span className="metric-period-pill live">
+              <span className="live-dot"></span>
+              Active Cycle • {currentMonthName}
+            </span>
+          </div>
+        </div>
         <div className="trb-card-grid">
           {/* Card 1: Total Orders */}
-          <div className="trb-stat-card border-blue-accent">
-            <div className="trb-stat-header">
-              <span className="trb-stat-title">TOTAL ORDERS</span>
-              <div className="trb-info-tooltip" title="Total orders placed in the current calendar month">
-                <Info size={16} />
+          <div className="kpi-stat-card kpi-card-blue">
+            <div className="kpi-top-row">
+              <div className="kpi-label-group">
+                <span className="kpi-label">TOTAL PRE-ORDERS</span>
+              </div>
+              <div className="kpi-icon-box icon-box-blue" title="Total orders placed in the current cycle">
+                <ShoppingBag size={20} />
               </div>
             </div>
-            <div className="trb-stat-value value-blue">
-              {stats.thisMonth.totalOrders}
+            <div className="kpi-value-row">
+              <span className="kpi-value value-blue">{stats.thisMonth.totalOrders}</span>
+            </div>
+            <div className="kpi-footer-row">
+              <TrendingUp size={14} className="kpi-footer-icon icon-blue" />
+              <span>Booked bakery orders this month</span>
             </div>
           </div>
 
           {/* Card 2: Total Pending Orders */}
-          <div className="trb-stat-card border-pink-accent">
-            <div className="trb-stat-header">
-              <span className="trb-stat-title">TOTAL PENDING ORDERS</span>
-              <div className="trb-info-tooltip" title="Orders pending kitchen preparation or supervisor authorization">
-                <Info size={16} />
+          <div className="kpi-stat-card kpi-card-amber">
+            <div className="kpi-top-row">
+              <div className="kpi-label-group">
+                <span className="kpi-label">PENDING IN QUEUE</span>
+              </div>
+              <div className="kpi-icon-box icon-box-amber" title="Orders pending kitchen preparation or dispatch">
+                <Clock size={20} />
               </div>
             </div>
-            <div className="trb-stat-value value-pink">
-              {stats.thisMonth.pendingOrders}
+            <div className="kpi-value-row">
+              <span className="kpi-value value-amber">{stats.thisMonth.pendingOrders}</span>
+            </div>
+            <div className="kpi-footer-row">
+              <Clock size={14} className="kpi-footer-icon icon-amber" />
+              <span>Awaiting production or delivery</span>
             </div>
           </div>
 
           {/* Card 3: Total New Customers */}
-          <div className="trb-stat-card border-pink-accent">
-            <div className="trb-stat-header">
-              <span className="trb-stat-title">TOTAL NEW CUSTOMERS</span>
-              <div className="trb-info-tooltip" title="Newly registered customer phone profiles this month">
-                <Info size={16} />
+          <div className="kpi-stat-card kpi-card-emerald">
+            <div className="kpi-top-row">
+              <div className="kpi-label-group">
+                <span className="kpi-label">NEW CUSTOMER PROFILES</span>
+              </div>
+              <div className="kpi-icon-box icon-box-emerald" title="Newly registered customer phone profiles">
+                <Users size={20} />
               </div>
             </div>
-            <div className="trb-stat-value value-pink">
-              {stats.thisMonth.newCustomers}
+            <div className="kpi-value-row">
+              <span className="kpi-value value-emerald">{stats.thisMonth.newCustomers}</span>
+            </div>
+            <div className="kpi-footer-row">
+              <Users size={14} className="kpi-footer-icon icon-emerald" />
+              <span>Registered counter profiles</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* ========================================================
-          SECTION 2: LAST MONTH (Exact Match to trbsys.net)
+          SECTION 2: PRIOR MONTH BENCHMARK (Modern KPI Redesign)
           ======================================================== */}
       <div className="dashboard-metric-section">
-        <h2 className="dashboard-section-heading">Last Month</h2>
+        <div className="dashboard-section-header-wrap">
+          <div className="dashboard-section-title-group">
+            <h2 className="dashboard-section-heading">Prior Month Benchmark</h2>
+            <span className="metric-period-pill">
+              Closed Cycle • {lastMonthName}
+            </span>
+          </div>
+        </div>
         <div className="trb-card-grid">
           {/* Card 1: Last Month Total Orders */}
-          <div className="trb-stat-card border-blue-accent">
-            <div className="trb-stat-header">
-              <span className="trb-stat-title">TOTAL ORDERS</span>
-              <div className="trb-info-tooltip" title="Total completed orders in the previous month">
-                <Info size={16} />
+          <div className="kpi-stat-card kpi-card-blue">
+            <div className="kpi-top-row">
+              <div className="kpi-label-group">
+                <span className="kpi-label">TOTAL PRE-ORDERS</span>
+              </div>
+              <div className="kpi-icon-box icon-box-blue" title="Total completed orders in the previous month">
+                <ShoppingBag size={20} />
               </div>
             </div>
-            <div className="trb-stat-value value-blue">
-              {stats.lastMonth.totalOrders}
+            <div className="kpi-value-row">
+              <span className="kpi-value value-blue">{stats.lastMonth.totalOrders}</span>
+            </div>
+            <div className="kpi-footer-row">
+              <ShoppingBag size={14} className="kpi-footer-icon icon-blue" />
+              <span>Historical closed volume</span>
             </div>
           </div>
 
           {/* Card 2: Last Month Total Pending Orders */}
-          <div className="trb-stat-card border-pink-accent">
-            <div className="trb-stat-header">
-              <span className="trb-stat-title">TOTAL PENDING ORDERS</span>
-              <div className="trb-info-tooltip" title="Pending orders recorded in the previous month">
-                <Info size={16} />
+          <div className="kpi-stat-card kpi-card-amber">
+            <div className="kpi-top-row">
+              <div className="kpi-label-group">
+                <span className="kpi-label">UNFULFILLED / CARRIED</span>
+              </div>
+              <div className="kpi-icon-box icon-box-amber" title="Pending orders recorded in the previous month">
+                <Clock size={20} />
               </div>
             </div>
-            <div className="trb-stat-value value-pink">
-              {stats.lastMonth.pendingOrders}
+            <div className="kpi-value-row">
+              <span className="kpi-value value-amber">{stats.lastMonth.pendingOrders}</span>
+            </div>
+            <div className="kpi-footer-row">
+              <Clock size={14} className="kpi-footer-icon icon-amber" />
+              <span>Carried forward or archived</span>
             </div>
           </div>
 
           {/* Card 3: Last Month Total New Customers */}
-          <div className="trb-stat-card border-pink-accent">
-            <div className="trb-stat-header">
-              <span className="trb-stat-title">TOTAL NEW CUSTOMERS</span>
-              <div className="trb-info-tooltip" title="Historical customer profiles registered last month">
-                <Info size={16} />
+          <div className="kpi-stat-card kpi-card-emerald">
+            <div className="kpi-top-row">
+              <div className="kpi-label-group">
+                <span className="kpi-label">REGISTERED CUSTOMERS</span>
+              </div>
+              <div className="kpi-icon-box icon-box-emerald" title="Customer profiles registered in the previous month">
+                <Users size={20} />
               </div>
             </div>
-            <div className="trb-stat-value value-pink">
-              {stats.lastMonth.newCustomers}
+            <div className="kpi-value-row">
+              <span className="kpi-value value-emerald">{stats.lastMonth.newCustomers}</span>
+            </div>
+            <div className="kpi-footer-row">
+              <Users size={14} className="kpi-footer-icon icon-emerald" />
+              <span>Customer base record</span>
             </div>
           </div>
         </div>
