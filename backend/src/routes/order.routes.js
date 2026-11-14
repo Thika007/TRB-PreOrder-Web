@@ -330,6 +330,9 @@ router.get('/', async (req, res) => {
                 o.delivery_date,
                 o.delivery_time,
                 o.delivery_type,
+                o.delivery_address,
+                o.sub_total,
+                o.discount_amount,
                 o.total_amount,
                 o.advance_amount,
                 o.balance_amount,
@@ -339,20 +342,38 @@ router.get('/', async (req, res) => {
                 c.title,
                 c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
                 c.mobile AS customer_mobile,
-                (SELECT COUNT(*) FROM dbo.OrderItems oi WHERE oi.order_id = o.order_id) AS item_count
+                (SELECT COUNT(*) FROM dbo.OrderItems oi WHERE oi.order_id = o.order_id) AS item_count,
+                ISNULL((
+                    SELECT STRING_AGG(
+                        oi.product_name + ' - ' + 
+                        CASE 
+                            WHEN oi.quantity = FLOOR(oi.quantity) THEN CAST(CAST(oi.quantity AS INT) AS VARCHAR(20))
+                            ELSE CAST(oi.quantity AS VARCHAR(20))
+                        END, 
+                        ', '
+                    ) 
+                    FROM dbo.OrderItems oi 
+                    WHERE oi.order_id = o.order_id
+                ), '') AS items_summary
             FROM dbo.Orders o
             INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
             ${whereClause}
             ORDER BY o.delivery_date ASC, o.delivery_time ASC
             OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
 
-            SELECT COUNT(*) AS total_count FROM dbo.Orders o INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id ${whereClause};
+            SELECT 
+                COUNT(*) AS total_count,
+                ISNULL(SUM(o.total_amount), 0) AS total_amount_sum
+            FROM dbo.Orders o 
+            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id 
+            ${whereClause};
         `;
 
         const result = await executeQuery(dataQuery, params);
         res.json({
             success: true,
             total: result.recordsets[1][0].total_count,
+            total_amount_sum: result.recordsets[1][0].total_amount_sum,
             page: parseInt(page, 10),
             orders: result.recordsets[0]
         });
@@ -516,6 +537,207 @@ router.post('/:id/pay', async (req, res) => {
     } catch (error) {
         await transaction.rollback();
         console.error('Make Payment Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 5. CANCEL PRE-ORDER
+// Corresponds to Action -> Cancel Order in Manage Orders
+// =========================================================================
+router.put('/:id/cancel', async (req, res) => {
+    const pool = await getPool();
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        const orderId = req.params.id;
+        const { reason = 'Cancelled by Cashier Station', user_id = 1 } = req.body;
+        const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+
+        await transaction.begin();
+
+        // Check order
+        const checkReq = new sql.Request(transaction);
+        checkReq.input('orderId', sql.Int, orderId);
+        const checkRes = await checkReq.query(`
+            SELECT order_id, order_number, order_status 
+            FROM dbo.Orders WITH (UPDLOCK) 
+            WHERE order_id = @orderId
+        `);
+
+        if (checkRes.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, error: 'Order not found.' });
+        }
+
+        const order = checkRes.recordset[0];
+        if (order.order_status === 'Cancelled') {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, error: 'Order is already cancelled.' });
+        }
+
+        // Update order status
+        const updateOrderReq = new sql.Request(transaction);
+        updateOrderReq.input('orderId', sql.Int, orderId);
+        await updateOrderReq.query(`
+            UPDATE dbo.Orders
+            SET order_status = 'Cancelled',
+                updated_at = GETDATE()
+            WHERE order_id = @orderId
+        `);
+
+        // Update kitchen production status
+        const updateKitchenReq = new sql.Request(transaction);
+        updateKitchenReq.input('orderId', sql.Int, orderId);
+        await updateKitchenReq.query(`
+            UPDATE kp
+            SET kp.production_status = 'Cancelled'
+            FROM dbo.KitchenProduction kp
+            INNER JOIN dbo.OrderItems oi ON kp.order_item_id = oi.order_item_id
+            WHERE oi.order_id = @orderId
+        `);
+
+        // Record Audit Log
+        const auditReq = new sql.Request(transaction);
+        auditReq.input('record_id', sql.Int, orderId);
+        auditReq.input('user_id', sql.Int, user_id);
+        auditReq.input('description', sql.NVarChar(500), `Cancelled Order ${order.order_number}. Reason: ${reason}`);
+        auditReq.input('ip_address', sql.VarChar(50), clientIp);
+        await auditReq.query(`
+            INSERT INTO dbo.AuditLogs (action_type, table_name, record_id, user_id, description, ip_address, log_time)
+            VALUES ('CANCEL', 'Orders', @record_id, @user_id, @description, @ip_address, GETDATE())
+        `);
+
+        await transaction.commit();
+
+        res.json({
+            success: true,
+            order_id: orderId,
+            order_number: order.order_number,
+            order_status: 'Cancelled',
+            message: `Order ${order.order_number} has been cancelled successfully.`
+        });
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Cancel Order Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 6. UPDATE PRE-ORDER (Edit Order)
+// Corresponds to Action -> Edit Order in Manage Orders
+// =========================================================================
+router.put('/:id', async (req, res) => {
+    const pool = await getPool();
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        const orderId = req.params.id;
+        const {
+            delivery_date,
+            delivery_time,
+            delivery_type,
+            delivery_address,
+            order_status,
+            customer_name,
+            customer_mobile,
+            user_id = 1
+        } = req.body;
+        const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+
+        await transaction.begin();
+
+        // 1. Fetch current order & customer
+        const checkReq = new sql.Request(transaction);
+        checkReq.input('orderId', sql.Int, orderId);
+        const checkRes = await checkReq.query(`
+            SELECT o.*, c.customer_id
+            FROM dbo.Orders o
+            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
+            WHERE o.order_id = @orderId
+        `);
+
+        if (checkRes.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, error: 'Order not found.' });
+        }
+
+        const currentOrder = checkRes.recordset[0];
+
+        // 2. Update Order
+        const updateOrderReq = new sql.Request(transaction);
+        updateOrderReq.input('orderId', sql.Int, orderId);
+        updateOrderReq.input('delivery_date', sql.Date, delivery_date || currentOrder.delivery_date);
+        updateOrderReq.input('delivery_time', sql.VarChar(30), delivery_time || currentOrder.delivery_time);
+        updateOrderReq.input('delivery_type', sql.VarChar(50), delivery_type || currentOrder.delivery_type);
+        updateOrderReq.input('delivery_address', sql.NVarChar(500), delivery_address !== undefined ? delivery_address : currentOrder.delivery_address);
+        updateOrderReq.input('order_status', sql.VarChar(30), order_status || currentOrder.order_status);
+
+        await updateOrderReq.query(`
+            UPDATE dbo.Orders
+            SET delivery_date = @delivery_date,
+                delivery_time = @delivery_time,
+                delivery_type = @delivery_type,
+                delivery_address = @delivery_address,
+                order_status = @order_status,
+                updated_at = GETDATE()
+            WHERE order_id = @orderId
+        `);
+
+        // 3. Update customer if provided
+        if (customer_name || customer_mobile) {
+            const updateCustReq = new sql.Request(transaction);
+            updateCustReq.input('custId', sql.Int, currentOrder.customer_id);
+            updateCustReq.input('first_name', sql.NVarChar(100), customer_name || 'Walk-in Customer');
+            updateCustReq.input('mobile', sql.VarChar(20), customer_mobile);
+            await updateCustReq.query(`
+                UPDATE dbo.Customers
+                SET first_name = @first_name,
+                    mobile = COALESCE(@mobile, mobile),
+                    updated_at = GETDATE()
+                WHERE customer_id = @custId
+            `);
+        }
+
+        // 4. Update Kitchen Production schedule if delivery date/time changed
+        if (delivery_date || delivery_time) {
+            const updateKitchenReq = new sql.Request(transaction);
+            updateKitchenReq.input('orderId', sql.Int, orderId);
+            updateKitchenReq.input('scheduled_bake_date', sql.Date, delivery_date || currentOrder.delivery_date);
+            updateKitchenReq.input('delivery_time_slot', sql.VarChar(30), delivery_time || currentOrder.delivery_time);
+            await updateKitchenReq.query(`
+                UPDATE kp
+                SET kp.scheduled_bake_date = @scheduled_bake_date,
+                    kp.delivery_time_slot = @delivery_time_slot
+                FROM dbo.KitchenProduction kp
+                INNER JOIN dbo.OrderItems oi ON kp.order_item_id = oi.order_item_id
+                WHERE oi.order_id = @orderId
+            `);
+        }
+
+        // 5. Audit Log
+        const auditReq = new sql.Request(transaction);
+        auditReq.input('record_id', sql.Int, orderId);
+        auditReq.input('user_id', sql.Int, user_id);
+        auditReq.input('description', sql.NVarChar(500), `Updated Order ${currentOrder.order_number}`);
+        auditReq.input('ip_address', sql.VarChar(50), clientIp);
+        await auditReq.query(`
+            INSERT INTO dbo.AuditLogs (action_type, table_name, record_id, user_id, description, ip_address, log_time)
+            VALUES ('UPDATE', 'Orders', @record_id, @user_id, @description, @ip_address, GETDATE())
+        `);
+
+        await transaction.commit();
+
+        res.json({
+            success: true,
+            order_id: orderId,
+            order_number: currentOrder.order_number,
+            message: `Order ${currentOrder.order_number} updated successfully.`
+        });
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Update Order Error:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });

@@ -219,36 +219,7 @@ export default function Dashboard() {
       </div>
 
       {/* ========================================================
-          SECTION 3: QUICK COUNTER STATION ACTION BANNER
-          ======================================================== */}
-      <div className="counter-action-banner">
-        <div className="banner-text">
-          <h3 className="banner-title">Royal Bakery Showroom Counter Station</h3>
-          <p className="banner-subtitle">
-            Local-first pre-order booking engine running on Microsoft SQL Server. Zero internet lag, instant printing.
-          </p>
-        </div>
-        <div className="banner-buttons">
-          <button 
-            className="btn btn-primary" 
-            onClick={() => navigate('/add-order')}
-          >
-            <PlusCircle size={16} />
-            <span>Book Cake Order (F1)</span>
-          </button>
-          <button 
-            className="btn btn-secondary text-white border-white/20 hover:bg-white/10" 
-            onClick={() => navigate('/manage_orders')}
-            style={{ backgroundColor: 'rgba(255,255,255,0.08)', color: '#fff', borderColor: 'rgba(255,255,255,0.2)' }}
-          >
-            <span>Manage Orders Grid</span>
-            <ArrowRight size={15} />
-          </button>
-        </div>
-      </div>
-
-      {/* ========================================================
-          SECTION 4: RECENT SHOWROOM PRE-ORDERS
+          SECTION 3: RECENT SHOWROOM PRE-ORDERS
           ======================================================== */}
       <div className="recent-orders-card">
         <div className="recent-orders-header">

@@ -20,6 +20,7 @@ export default function TopNavigation() {
   const { logout } = useAuth();
 
   const [time, setTime] = useState(new Date());
+  const [navState, setNavState] = useState('nav-at-top');
 
   // Live Digital Clock
   useEffect(() => {
@@ -27,10 +28,43 @@ export default function TopNavigation() {
     return () => clearInterval(timer);
   }, []);
 
+  // Smart Scroll Navigation Dynamics:
+  // - Scrolling down: Hide both top bar and section navbar for maximum canvas view
+  // - Scrolling up: Instant smooth slide-down of Section Navbar ONLY (top bar stays hidden)
+  // - At the very top (scrollY <= 25): Reveal full header with Top Brand Bar
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let ticking = false;
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (currentScrollY <= 25) {
+            setNavState('nav-at-top');
+          } else if (currentScrollY > lastScrollY && currentScrollY > 60) {
+            setNavState('nav-scrolling-down');
+          } else if (currentScrollY < lastScrollY) {
+            setNavState('nav-scrolling-up');
+          }
+
+          lastScrollY = currentScrollY;
+          ticking = false;
+        });
+
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   // Format digital clock display
   const rawTimeString = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
   const [timeDigits, ampm = ''] = rawTimeString.split(' ');
-  const dateFormatted = time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+  const dateFormatted = time.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' });
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out of your counter session?')) {
@@ -66,7 +100,7 @@ export default function TopNavigation() {
   ].some(p => location.pathname === p);
 
   return (
-    <header className="top-navigation-container">
+    <header className={`top-navigation-container ${navState}`}>
       {/* ========================================================
           TIER 1: PRIMARY BRAND & USER HEADER (Dark Navy Theme)
           ======================================================== */}
@@ -338,7 +372,6 @@ export default function TopNavigation() {
         <div className="sub-nav-clock-widget" title="Current POS Station Time">
           <div className="digital-clock-body">
             <div className="digital-clock-date-line">
-              <span className="digital-live-pulse-dot"></span>
               <span>{dateFormatted}</span>
             </div>
             <div className="digital-clock-time-line">

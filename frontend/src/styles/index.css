@@ -745,6 +745,25 @@ button, input, select, textarea {
   z-index: 50;
   width: 100%;
   box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease;
+  will-change: transform;
+}
+
+/* SMART SCROLL DYNAMICS */
+.top-navigation-container.nav-at-top {
+  transform: translateY(0);
+}
+
+.top-navigation-container.nav-scrolling-down {
+  transform: translateY(-100%);
+}
+
+.top-navigation-container.nav-scrolling-up {
+  transform: translateY(-56px); /* Shifts the 56px top brand bar offscreen, docking section navbar at top: 0 */
+}
+
+.top-navigation-container.nav-scrolling-up .sub-nav-bar {
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.09);
 }
 
 /* TIER 1: BRAND BAR */
@@ -936,46 +955,35 @@ button, input, select, textarea {
 .sub-nav-clock-widget {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 6px 14px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  justify-content: flex-end;
+  padding: 4px 6px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
   margin-left: auto;
   flex-shrink: 0;
-  transition: all 0.2s ease;
 }
 
 .sub-nav-clock-widget:hover {
-  background: #ffffff;
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+  background: transparent;
+  box-shadow: none;
 }
 
 .digital-clock-body {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .digital-clock-date-line {
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #64748b;
   margin-bottom: 2px;
-  letter-spacing: 0.02em;
-}
-
-.digital-live-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #10b981;
-  animation: pulseDot 2s infinite ease-in-out;
+  letter-spacing: 0.025em;
+  white-space: nowrap;
 }
 
 .digital-clock-time-line {
@@ -2733,3 +2741,91 @@ button, input, select, textarea {
 
 
 
+
+
+/* =========================================================================
+   TRBSYS MANAGE ORDERS GRID & PRINT STYLING
+   ========================================================================= */
+.trb-orders-table th {
+  user-select: none;
+}
+
+.trb-orders-table th:hover {
+  background-color: #f8fafc;
+}
+
+.trb-table-row:hover td {
+  background-color: #f1f5f9 !important;
+}
+
+.trb-link-btn {
+  transition: color 0.15s ease, text-decoration 0.15s ease;
+}
+
+.trb-link-btn:hover {
+  text-decoration: underline !important;
+  color: #1d4ed8 !important;
+}
+
+.trb-link-cancel:hover {
+  color: #dc2626 !important;
+}
+
+/* PRINT MEDIA SPECIFICATIONS FOR 80mm RECEIPT & A5 INVOICE */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Hide all app chrome: top navigation, dashboard sidebars, floating widgets */
+  .top-nav-container,
+  .top-nav-placeholder,
+  .sidebar,
+  .no-print,
+  .manage-orders-container > *:not(.print-modal-backdrop) {
+    display: none !important;
+  }
+
+  /* Backdrop becomes clean paper */
+  .print-modal-backdrop {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+  }
+
+  .print-modal-content {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  /* A5 Document Print Tuning */
+  .print-a5-document {
+    width: 148mm !important;
+    min-height: 200mm !important;
+    margin: 0 auto !important;
+    padding: 10mm !important;
+    border: 1px solid #000000 !important;
+    box-sizing: border-box !important;
+    page-break-inside: avoid !important;
+    font-size: 11px !important;
+  }
+
+  /* 80mm POS Thermal Slip Tuning */
+  .print-thermal-receipt {
+    width: 72mm !important;
+    margin: 0 auto !important;
+    padding: 4mm 0 !important;
+    font-size: 11px !important;
+    line-height: 1.3 !important;
+  }
+}
