@@ -4,14 +4,13 @@ import {
   LayoutDashboard, 
   ShieldCheck, 
   ShoppingBag, 
-  FileCheck2,
-  ClipboardList,
-  ChefHat,
-  BarChart3,
-  MessageSquareText,
-  Truck,
+  FileCheck2, 
+  ClipboardList, 
+  ChefHat, 
+  BarChart3, 
+  MessageSquareText, 
+  Truck, 
   Clock, 
-  User, 
   LogOut 
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -19,7 +18,7 @@ import { useAuth } from '../context/AuthContext';
 export default function TopNavigation() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
 
   const [time, setTime] = useState(new Date());
 
@@ -28,6 +27,11 @@ export default function TopNavigation() {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Format digital clock display
+  const rawTimeString = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+  const [timeDigits, ampm = ''] = rawTimeString.split(' ');
+  const dateFormatted = time.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' });
 
   const handleLogout = () => {
     if (window.confirm('Are you sure you want to log out of your counter session?')) {
@@ -77,23 +81,6 @@ export default function TopNavigation() {
           </div>
 
           <div className="brand-right">
-            {/* Live Digital Clock */}
-            <div className="clock-pill">
-              <Clock size={13} className="clock-icon" />
-              <span>{time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-            </div>
-
-            {/* Active Staff Station Profile */}
-            <div className="staff-pill">
-              <div className="staff-avatar">
-                <User size={14} />
-              </div>
-              <div className="staff-info">
-                <span className="staff-name">{user?.full_name || 'System Administrator'}</span>
-                <span className="staff-role">{user?.user_role || 'Admin'} Station</span>
-              </div>
-            </div>
-
             {/* Red & Gold Circular "RB" Monogram Emblem */}
             <div className="rb-emblem-badge" title="The Royal Bakery - Est. 1906">
               <img 
@@ -123,20 +110,21 @@ export default function TopNavigation() {
 
       {/* ========================================================
           TIER 2: SECONDARY SECTION NAVIGATION BAR (Light Theme)
-          Exact trbsys.net 9 tabs with multi-level hover flyouts
+          Exact trbsys.net 9 tabs with modern right-side Digital Clock
           ======================================================== */}
       <nav className="sub-nav-bar">
         <div className="sub-nav-inner">
-          {/* 1. DASHBOARD */}
-          <NavLink 
-            to="/dashboard"
-            className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
-          >
-            <div className="sub-nav-icon">
-              <LayoutDashboard size={18} />
-            </div>
-            <span className="sub-nav-label">Dashboard</span>
-          </NavLink>
+          <div className="sub-nav-tabs-group">
+            {/* 1. DASHBOARD */}
+            <NavLink 
+              to="/dashboard"
+              className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
+            >
+              <div className="sub-nav-icon">
+                <LayoutDashboard size={18} />
+              </div>
+              <span className="sub-nav-label">Dashboard</span>
+            </NavLink>
 
           {/* 2. MAIN ACCESS (Dropdown with Flyouts) */}
           <div className={`sub-nav-tab dropdown-parent ${isMainAccessActive ? 'active' : ''}`}>
@@ -346,7 +334,25 @@ export default function TopNavigation() {
             <span className="sub-nav-label">Delivery</span>
           </NavLink>
         </div>
-      </nav>
-    </header>
+
+        {/* RIGHT SIDE: MODERN DIGITAL CLOCK WIDGET */}
+        <div className="sub-nav-clock-widget" title="Current POS Station Time">
+          <div className="digital-clock-icon-wrap">
+            <Clock size={17} />
+          </div>
+          <div className="digital-clock-body">
+            <div className="digital-clock-time-line">
+              <span className="digital-clock-digits">{timeDigits}</span>
+              {ampm && <span className="digital-clock-ampm">{ampm}</span>}
+            </div>
+            <div className="digital-clock-date-line">
+              <span className="digital-live-pulse-dot"></span>
+              <span>{dateFormatted}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  </header>
   );
 }

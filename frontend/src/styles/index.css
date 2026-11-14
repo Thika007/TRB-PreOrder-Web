@@ -919,9 +919,115 @@ button, input, select, textarea {
   padding: 0 32px;
   display: flex;
   align-items: center;
-  gap: 30px;
+  justify-content: space-between;
+  gap: 20px;
   position: relative;
   overflow: visible !important;
+}
+
+.sub-nav-tabs-group {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  overflow: visible !important;
+}
+
+/* Modern Section Navbar Digital Clock Widget */
+.sub-nav-clock-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  margin-left: auto;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.sub-nav-clock-widget:hover {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+}
+
+.digital-clock-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  color: #258be0;
+  border: 1px solid #dbeafe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.digital-clock-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.digital-clock-time-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.digital-clock-digits {
+  font-size: 20px;
+  font-weight: 800;
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  font-variant-numeric: tabular-nums;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.digital-clock-ampm {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: #258be0;
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 1.5px 5.5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.digital-clock-date-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.digital-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #10b981;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
+@media (max-width: 1200px) {
+  .sub-nav-tabs-group {
+    gap: 16px;
+  }
+}
+
+@media (max-width: 960px) {
+  .sub-nav-clock-widget {
+    display: none;
+  }
 }
 
 .sub-nav-tab {
