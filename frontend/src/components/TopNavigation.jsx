@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  LayoutGrid, 
-  Info, 
-  Building2, 
-  DollarSign,
+  LayoutDashboard, 
+  ShieldCheck, 
+  ShoppingBag, 
+  FileCheck2,
+  ClipboardList,
+  ChefHat,
+  BarChart3,
+  MessageSquareText,
+  Truck,
   Clock, 
   User, 
   LogOut 
@@ -128,7 +133,7 @@ export default function TopNavigation() {
             className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
           >
             <div className="sub-nav-icon">
-              <LayoutGrid size={18} />
+              <LayoutDashboard size={18} />
             </div>
             <span className="sub-nav-label">Dashboard</span>
           </NavLink>
@@ -136,7 +141,7 @@ export default function TopNavigation() {
           {/* 2. MAIN ACCESS (Dropdown with Flyouts) */}
           <div className={`sub-nav-tab dropdown-parent ${isMainAccessActive ? 'active' : ''}`}>
             <div className="sub-nav-icon">
-              <Info size={18} />
+              <ShieldCheck size={18} />
             </div>
             <span className="sub-nav-label">Main Access</span>
 
@@ -208,7 +213,7 @@ export default function TopNavigation() {
             style={{ cursor: 'pointer' }}
           >
             <div className="sub-nav-icon">
-              <Building2 size={18} />
+              <ShoppingBag size={18} />
             </div>
             <span className="sub-nav-label">Orders</span>
 
@@ -232,7 +237,7 @@ export default function TopNavigation() {
             className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
           >
             <div className="sub-nav-icon">
-              <Building2 size={18} />
+              <FileCheck2 size={18} />
             </div>
             <span className="sub-nav-label">Authorize Bills</span>
           </NavLink>
@@ -243,7 +248,7 @@ export default function TopNavigation() {
             className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
           >
             <div className="sub-nav-icon">
-              <Building2 size={18} />
+              <ClipboardList size={18} />
             </div>
             <span className="sub-nav-label">Manage Orders</span>
           </NavLink>
@@ -254,7 +259,7 @@ export default function TopNavigation() {
             className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
           >
             <div className="sub-nav-icon">
-              <Building2 size={18} />
+              <ChefHat size={18} />
             </div>
             <span className="sub-nav-label">Chef Reports</span>
           </NavLink>
@@ -262,7 +267,7 @@ export default function TopNavigation() {
           {/* 7. REPORTS (Dropdown with Flyouts) */}
           <div className={`sub-nav-tab dropdown-parent ${isReportsActive ? 'active' : ''}`}>
             <div className="sub-nav-icon">
-              <DollarSign size={18} />
+              <BarChart3 size={18} />
             </div>
             <span className="sub-nav-label">Reports</span>
 
@@ -325,7 +330,7 @@ export default function TopNavigation() {
             className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
           >
             <div className="sub-nav-icon">
-              <Building2 size={18} />
+              <MessageSquareText size={18} />
             </div>
             <span className="sub-nav-label">SMS Promotions</span>
           </NavLink>
@@ -336,7 +341,7 @@ export default function TopNavigation() {
             className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
           >
             <div className="sub-nav-icon">
-              <Building2 size={18} />
+              <Truck size={18} />
             </div>
             <span className="sub-nav-label">Delivery</span>
           </NavLink>
