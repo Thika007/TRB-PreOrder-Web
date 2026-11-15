@@ -295,15 +295,15 @@ export default function ManageCategories() {
               />
             </div>
 
-            {/* 3. Main Category Description */}
+            {/* 3. Chef Description */}
             <div className="form-field-group">
-              <label className="field-label">Main Category Description</label>
+              <label className="field-label">Chef Description</label>
               <input
                 type="text"
                 name="chef_description"
                 value={formData.chef_description}
                 onChange={handleChange}
-                placeholder="Enter Main Category Description"
+                placeholder="e.g. Cheff Premaratna, Cheff Wickramapala"
                 className="field-input"
                 autoComplete="off"
                 disabled={submitting}
@@ -390,7 +390,7 @@ export default function ManageCategories() {
                 </th>
                 <th onClick={() => handleSort('chef_description')} style={{ cursor: 'pointer' }}>
                   <div className="th-content">
-                    <span>Main Category Description</span>
+                    <span>Chef Description</span>
                     <ArrowUpDown size={12} className="sort-icon" />
                   </div>
                 </th>

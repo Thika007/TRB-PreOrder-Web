@@ -14,7 +14,8 @@ import {
   Calendar,
   DollarSign,
   Cake,
-  FileText
+  FileText,
+  X
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -59,13 +60,14 @@ export default function CreateOrder() {
   const [custFirstName, setCustFirstName] = useState('');
   const [custMobile, setCustMobile] = useState('');
   const [custTelephone, setCustTelephone] = useState('');
+  const [custEmail, setCustEmail] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   
   // Tomorrow's date in YYYY-MM-DD
   const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const todayStr = new Date().toISOString().slice(0, 10);
   const [deliveryDate, setDeliveryDate] = useState(tomorrowStr);
-  const [deliveryTime, setDeliveryTime] = useState('11:00');
+  const [deliveryTime, setDeliveryTime] = useState('00:00');
   const [deliveryAddress, setDeliveryAddress] = useState('');
 
   // Mobile autocomplete state
@@ -212,6 +214,7 @@ export default function CreateOrder() {
     setCustFirstName(c.first_name || '');
     setCustMobile(c.mobile || '');
     setCustTelephone(c.landline || '');
+    setCustEmail(c.email || '');
     if (c.delivery_address) {
       setDeliveryAddress(c.delivery_address);
     }
@@ -342,11 +345,12 @@ export default function CreateOrder() {
           first_name: custFirstName.trim(),
           mobile: custMobile.trim(),
           telephone: custTelephone.trim(),
+          email: custEmail.trim() || null,
           delivery_address: deliveryAddress.trim()
         },
         ordered_by: user?.user_name || 'Admin',
         delivery_date: deliveryDate,
-        delivery_time: deliveryTime || '11:00 AM',
+        delivery_time: deliveryTime || '00:00',
         delivery_type: deliveryAddress.trim() ? 'Home Delivery' : 'Showroom Pickup',
         delivery_address: deliveryAddress.trim(),
         manufacture_date: manufactureDate || deliveryDate,
@@ -372,7 +376,7 @@ export default function CreateOrder() {
           customer_name: `${custTitle} ${custFirstName}`,
           customer_mobile: custMobile,
           delivery_date: deliveryDate,
-          delivery_time: deliveryTime || '11:00 AM',
+          delivery_time: deliveryTime || '00:00',
           total_amount: netTotal,
           advance_amount: advanceAmountNum,
           balance_amount: res.data.balance_amount !== undefined ? res.data.balance_amount : balanceDue,
@@ -411,10 +415,11 @@ export default function CreateOrder() {
     setCustFirstName('');
     setCustMobile('');
     setCustTelephone('');
+    setCustEmail('');
     setDeliveryAddress('');
     setSelectedCustomerId(null);
     setDeliveryDate(tomorrowStr);
-    setDeliveryTime('11:00');
+    setDeliveryTime('00:00');
 
     setPaymentType('Cash');
     setDiscountPercent(0);
@@ -851,6 +856,18 @@ export default function CreateOrder() {
               />
             </div>
 
+            {/* Email */}
+            <div className="form-field-group">
+              <label className="field-label">Email</label>
+              <input
+                type="email"
+                value={custEmail}
+                onChange={(e) => setCustEmail(e.target.value)}
+                placeholder="customer@email.com (optional)"
+                className="field-input"
+              />
+            </div>
+
             {/* Ordered By (Readonly) */}
             <div className="form-field-group">
               <label className="field-label">Ordered By</label>
@@ -1095,7 +1112,43 @@ export default function CreateOrder() {
           ======================================================== */}
       {orderSuccessModal && (
         <div className="order-modal-backdrop">
-          <div className="order-modal-box">
+          <div className="order-modal-box" style={{ position: 'relative' }}>
+            {/* Top-Right Close Button */}
+            <button
+              type="button"
+              onClick={() => setOrderSuccessModal(null)}
+              className="order-modal-close-btn"
+              title="Close"
+              aria-label="Close popup"
+              style={{
+                position: 'absolute',
+                top: '16px',
+                right: '16px',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: 'none',
+                backgroundColor: '#f1f5f9',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                zIndex: 10
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e2e8f0';
+                e.currentTarget.style.color = '#0f172a';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f1f5f9';
+                e.currentTarget.style.color = '#64748b';
+              }}
+            >
+              <X size={18} />
+            </button>
+
             <div style={{ textAlign: 'center', marginBottom: '20px' }}>
               <div style={{
                 width: '56px',

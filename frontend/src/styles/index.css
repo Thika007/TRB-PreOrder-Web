@@ -2286,7 +2286,7 @@ button, input, select, textarea {
 /* Card 3: Fill Customer Information Grids */
 .order-customer-grid-row1 {
   display: grid;
-  grid-template-columns: 130px 1.2fr 1.2fr 1fr 1fr;
+  grid-template-columns: 110px 1.2fr 1.2fr 1fr 1.3fr 1fr;
   gap: 16px;
   margin-bottom: 16px;
 }

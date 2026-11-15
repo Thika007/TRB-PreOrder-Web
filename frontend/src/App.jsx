@@ -8,6 +8,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import CreateOrder from './pages/orders/CreateOrder';
 import ManageOrders from './pages/orders/ManageOrders';
+import CancelledOrders from './pages/orders/CancelledOrders';
+import BillAuthorized from './pages/orders/BillAuthorized';
 import ChefReports from './pages/kitchen/ChefReports';
 import Delivery from './pages/kitchen/Delivery';
 import CustomerList from './pages/customers/CustomerList';
@@ -43,8 +45,8 @@ export default function App() {
               {/* Menu 3: Orders */}
               <Route path="add-order" element={<CreateOrder />} />
               <Route path="manage_orders" element={<ManageOrders />} />
-              <Route path="cancel_orders" element={<ManageOrders />} />
-              <Route path="bill_authorized" element={<ManageOrders />} />
+              <Route path="cancel_orders" element={<CancelledOrders />} />
+              <Route path="bill_authorized" element={<BillAuthorized />} />
               
               {/* Menu 4: Chef Reports & Kitchen */}
               <Route path="reports_cheff" element={<ChefReports />} />

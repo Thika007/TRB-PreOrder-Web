@@ -62,6 +62,7 @@ export default function ManageOrders() {
   // Cancel Confirmation
   const [cancellingOrder, setCancellingOrder] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+  const [cancelReason, setCancelReason] = useState('CXL');
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -238,6 +239,7 @@ export default function ManageOrders() {
 
   // Cancel Order Workflow
   const handleCancelOrder = (order) => {
+    setCancelReason('CXL');
     setCancellingOrder(order);
   };
 
@@ -246,7 +248,7 @@ export default function ManageOrders() {
     setCancelling(true);
     try {
       const res = await axios.put(`/api/orders/${cancellingOrder.order_id}/cancel`, {
-        reason: 'Cancelled from Manage Orders by cashier'
+        reason: cancelReason || 'CXL'
       });
       if (res.data.success) {
         showSuccess(`Order #${cancellingOrder.order_number} has been cancelled.`, 'Order Cancelled');
@@ -1275,6 +1277,7 @@ export default function ManageOrders() {
           padding: '20px'
         }}>
           <div className="card" style={{
+            position: 'relative',
             backgroundColor: '#ffffff',
             borderRadius: '10px',
             width: '440px',
@@ -1283,6 +1286,38 @@ export default function ManageOrders() {
             textAlign: 'center',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.3)'
           }}>
+            <button
+              type="button"
+              onClick={() => setCancellingOrder(null)}
+              title="Close"
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: '14px',
+                right: '14px',
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                backgroundColor: '#f1f5f9',
+                color: '#64748b',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = '#e2e8f0';
+                e.currentTarget.style.color = '#0f172a';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = '#f1f5f9';
+                e.currentTarget.style.color = '#64748b';
+              }}
+            >
+              <X size={16} />
+            </button>
             <div style={{
               width: '52px',
               height: '52px',
@@ -1301,9 +1336,36 @@ export default function ManageOrders() {
               Cancel Order #{cancellingOrder.order_number}?
             </h3>
 
-            <p style={{ fontSize: '13.5px', color: '#64748b', margin: '0 0 20px 0', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '13.5px', color: '#64748b', margin: '0 0 16px 0', lineHeight: '1.5' }}>
               Are you sure you want to cancel this order? This will mark the order and any queued kitchen baking tasks as <strong>Cancelled</strong>.
             </p>
+
+            <div style={{ marginBottom: '18px', textAlign: 'left' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                Cancellation Reason
+              </label>
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  color: '#334155',
+                  backgroundColor: '#ffffff'
+                }}
+              >
+                <option value="CXL">CXL (Standard Cancellation)</option>
+                <option value="C">C (Customer Request)</option>
+                <option value="Customer Cancelled">Customer Cancelled</option>
+                <option value="Duplicate Order">Duplicate Order</option>
+                <option value="Incorrect Entry">Incorrect Entry</option>
+                <option value="Payment Issue">Payment Issue</option>
+              </select>
+            </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button

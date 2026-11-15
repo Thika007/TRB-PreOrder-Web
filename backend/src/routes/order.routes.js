@@ -83,7 +83,8 @@ router.post('/', async (req, res) => {
         const custMobile = customer?.mobile ? customer.mobile.trim() : null;
         const custFirstName = customer?.first_name ? customer.first_name.trim() : 'Walk-in Customer';
         const custTitle = customer?.title || 'Mr';
-        const custLandline = customer?.telephone || null;
+        const custLandline = customer?.telephone ? customer.telephone.trim() : null;
+        const custEmail = customer?.email ? customer.email.trim() : null;
         const custAddress = delivery_address || customer?.delivery_address || null;
 
         if (!finalCustomerId && custMobile) {
@@ -102,10 +103,13 @@ router.post('/', async (req, res) => {
                 updateCustReq.input('first_name', sql.NVarChar(100), custFirstName);
                 updateCustReq.input('title', sql.VarChar(10), custTitle);
                 updateCustReq.input('landline', sql.VarChar(20), custLandline);
+                updateCustReq.input('email', sql.VarChar(100), custEmail);
                 updateCustReq.input('delivery_address', sql.NVarChar(500), custAddress);
                 await updateCustReq.query(`
                     UPDATE dbo.Customers 
-                    SET first_name = @first_name, title = @title, landline = @landline, 
+                    SET first_name = @first_name, title = @title, 
+                        landline = COALESCE(@landline, landline), 
+                        email = COALESCE(@email, email),
                         delivery_address = COALESCE(@delivery_address, delivery_address), 
                         updated_at = GETDATE()
                     WHERE customer_id = @cust_id
@@ -117,14 +121,34 @@ router.post('/', async (req, res) => {
                 newCustReq.input('first_name', sql.NVarChar(100), custFirstName);
                 newCustReq.input('mobile', sql.VarChar(20), custMobile);
                 newCustReq.input('landline', sql.VarChar(20), custLandline);
+                newCustReq.input('email', sql.VarChar(100), custEmail);
                 newCustReq.input('delivery_address', sql.NVarChar(500), custAddress);
                 const newCustRes = await newCustReq.query(`
-                    INSERT INTO dbo.Customers (title, first_name, mobile, landline, delivery_address, created_at, updated_at)
+                    INSERT INTO dbo.Customers (title, first_name, mobile, landline, email, delivery_address, created_at, updated_at)
                     OUTPUT INSERTED.customer_id
-                    VALUES (@title, @first_name, @mobile, @landline, @delivery_address, GETDATE(), GETDATE())
+                    VALUES (@title, @first_name, @mobile, @landline, @email, @delivery_address, GETDATE(), GETDATE())
                 `);
                 finalCustomerId = newCustRes.recordset[0].customer_id;
             }
+        } else if (finalCustomerId && (custEmail || custFirstName || custLandline || custAddress)) {
+            // Update customer if customer was pre-selected from autocomplete but new email or details were entered
+            const updateCustReq = new sql.Request(transaction);
+            updateCustReq.input('cust_id', sql.Int, finalCustomerId);
+            updateCustReq.input('first_name', sql.NVarChar(100), custFirstName);
+            updateCustReq.input('title', sql.VarChar(10), custTitle);
+            updateCustReq.input('landline', sql.VarChar(20), custLandline);
+            updateCustReq.input('email', sql.VarChar(100), custEmail);
+            updateCustReq.input('delivery_address', sql.NVarChar(500), custAddress);
+            await updateCustReq.query(`
+                UPDATE dbo.Customers 
+                SET first_name = COALESCE(NULLIF(@first_name, ''), first_name), 
+                    title = COALESCE(NULLIF(@title, ''), title), 
+                    landline = COALESCE(@landline, landline), 
+                    email = COALESCE(@email, email),
+                    delivery_address = COALESCE(@delivery_address, delivery_address), 
+                    updated_at = GETDATE()
+                WHERE customer_id = @cust_id
+            `);
         }
 
         if (!finalCustomerId) {
@@ -150,7 +174,7 @@ router.post('/', async (req, res) => {
         const balance = Math.max(0, total - advance);
         const payment_status = balance <= 0 ? 'Fully Paid' : (advance > 0 ? 'Advance Paid' : 'Pending');
         const order_status = 'Pending';
-        const finalDeliveryTime = delivery_time || '11:00 AM';
+        const finalDeliveryTime = delivery_time || '00:00';
 
         // 3. Insert Order Header
         const orderReq = new sql.Request(transaction);
@@ -228,16 +252,30 @@ router.post('/', async (req, res) => {
 
             const orderItemId = itemRes.recordset[0].order_item_id;
 
-            // 5. Queue in Kitchen Production Worksheet
+            // 5. Queue in Kitchen Production Worksheet (Auto-assign Chef from Product Category if not explicitly provided)
             const kitchenReq = new sql.Request(transaction);
             kitchenReq.input('order_item_id', sql.Int, orderItemId);
+            kitchenReq.input('product_id', sql.Int, item.product_id);
             kitchenReq.input('assigned_chef', sql.NVarChar(100), item.assigned_chef || null);
             kitchenReq.input('scheduled_bake_date', sql.Date, delivery_date);
             kitchenReq.input('delivery_time_slot', sql.VarChar(30), finalDeliveryTime);
 
             await kitchenReq.query(`
                 INSERT INTO dbo.KitchenProduction (order_item_id, assigned_chef, scheduled_bake_date, delivery_time_slot, production_status)
-                VALUES (@order_item_id, @assigned_chef, @scheduled_bake_date, @delivery_time_slot, 'Pending')
+                VALUES (
+                    @order_item_id, 
+                    COALESCE(
+                        @assigned_chef,
+                        (SELECT TOP 1 mc.chef_description 
+                         FROM dbo.Products p 
+                         INNER JOIN dbo.MainCategories mc ON p.main_cat_id = mc.main_cat_id 
+                         WHERE p.product_id = @product_id),
+                        N'Cheff Premaratna'
+                    ), 
+                    @scheduled_bake_date, 
+                    @delivery_time_slot, 
+                    'Pending'
+                )
             `);
         }
 
@@ -342,6 +380,7 @@ router.get('/', async (req, res) => {
                 c.title,
                 c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
                 c.mobile AS customer_mobile,
+                c.email AS customer_email,
                 (SELECT COUNT(*) FROM dbo.OrderItems oi WHERE oi.order_id = o.order_id) AS item_count,
                 ISNULL((
                     SELECT STRING_AGG(
@@ -383,6 +422,215 @@ router.get('/', async (req, res) => {
 });
 
 // =========================================================================
+// 2.1 GET CANCELLED ORDERS (Corresponds to /cancel_orders)
+// [Matches trbsys.net/cancel_orders: Invoice Id, Reason, Cancelled By, Date]
+// =========================================================================
+router.get('/cancelled', async (req, res) => {
+    try {
+        const { reason, search, page = 1, limit = 500 } = req.query;
+        const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+        let whereClause = `WHERE o.order_status = 'Cancelled'`;
+        const params = [
+            { name: 'offset', type: sql.Int, value: offset },
+            { name: 'limit', type: sql.Int, value: parseInt(limit, 10) }
+        ];
+
+        if (reason && reason !== 'Show all' && reason !== 'All') {
+            whereClause += ` AND (o.cancellation_reason = @reason OR (o.cancellation_reason IS NULL AND @reason = 'CXL'))`;
+            params.push({ name: 'reason', type: sql.NVarChar(100), value: reason });
+        }
+
+        if (search) {
+            whereClause += ` AND (
+                o.order_number LIKE '%' + @search + '%' OR 
+                ISNULL(o.invoice_no, '') LIKE '%' + @search + '%' OR 
+                c.mobile LIKE @search + '%' OR 
+                c.first_name LIKE '%' + @search + '%' OR 
+                ISNULL(o.cancellation_reason, 'CXL') LIKE '%' + @search + '%' OR
+                ISNULL(u.full_name, 'Admin') LIKE '%' + @search + '%'
+            )`;
+            params.push({ name: 'search', type: sql.NVarChar(100), value: search.trim() });
+        }
+
+        const dataQuery = `
+            SELECT 
+                o.order_id,
+                o.order_number,
+                ISNULL(o.invoice_no, o.order_number) AS invoice_id,
+                COALESCE(
+                    o.cancellation_reason,
+                    (
+                        SELECT TOP 1 
+                            CASE 
+                                WHEN al.description LIKE '%. Reason: %' THEN SUBSTRING(al.description, CHARINDEX('. Reason: ', al.description) + 10, 500)
+                                ELSE 'CXL'
+                            END
+                        FROM dbo.AuditLogs al 
+                        WHERE al.action_type = 'CANCEL' AND al.record_id = o.order_id 
+                        ORDER BY al.log_time DESC
+                    ),
+                    'CXL'
+                ) AS reason,
+                COALESCE(
+                    u.full_name,
+                    u.username,
+                    (
+                        SELECT TOP 1 au.full_name 
+                        FROM dbo.AuditLogs al 
+                        LEFT JOIN dbo.Users au ON al.user_id = au.user_id
+                        WHERE al.action_type = 'CANCEL' AND al.record_id = o.order_id 
+                        ORDER BY al.log_time DESC
+                    ),
+                    'Admin'
+                ) AS cancelled_by,
+                FORMAT(ISNULL(o.cancelled_at, ISNULL(o.updated_at, o.order_date)), 'yyyy-MM-dd') AS cancelled_date,
+                o.cancelled_at,
+                o.order_date,
+                o.delivery_date,
+                o.delivery_time,
+                o.total_amount,
+                o.advance_amount,
+                o.balance_amount,
+                o.order_status,
+                c.customer_id,
+                c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
+                c.mobile AS customer_mobile,
+                ISNULL((
+                    SELECT STRING_AGG(
+                        oi.product_name + ' - ' + 
+                        CASE 
+                            WHEN oi.quantity = FLOOR(oi.quantity) THEN CAST(CAST(oi.quantity AS INT) AS VARCHAR(20))
+                            ELSE CAST(oi.quantity AS VARCHAR(20))
+                        END, 
+                        ', '
+                    ) 
+                    FROM dbo.OrderItems oi 
+                    WHERE oi.order_id = o.order_id
+                ), '') AS items_summary
+            FROM dbo.Orders o
+            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
+            LEFT JOIN dbo.Users u ON o.cancelled_by_user_id = u.user_id
+            ${whereClause}
+            ORDER BY ISNULL(o.cancelled_at, ISNULL(o.updated_at, o.order_date)) DESC
+            OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+
+            SELECT COUNT(*) AS total_count 
+            FROM dbo.Orders o
+            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
+            LEFT JOIN dbo.Users u ON o.cancelled_by_user_id = u.user_id
+            ${whereClause};
+        `;
+
+        const result = await executeQuery(dataQuery, params);
+        res.json({
+            success: true,
+            total: result.recordsets[1][0].total_count,
+            page: parseInt(page, 10),
+            orders: result.recordsets[0]
+        });
+    } catch (error) {
+        console.error('Fetch Cancelled Orders Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
+// 2.2 GET AUTHORIZE BILLS LIST (Corresponds to /bill_authorized)
+// [Matches trbsys.net/bill_authorized: Invoice ID, Name (Items), Date of Delivery, Total, Status, Balance, Print-A5, Action (Bill Authorize)]
+// =========================================================================
+router.get('/authorize-list', async (req, res) => {
+    try {
+        const { status, search, page = 1, limit = 500 } = req.query;
+        const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+        let whereClause = `WHERE 1=1`;
+        const params = [
+            { name: 'offset', type: sql.Int, value: offset },
+            { name: 'limit', type: sql.Int, value: parseInt(limit, 10) }
+        ];
+
+        if (status && status !== 'Show all' && status !== 'All') {
+            whereClause += ` AND o.order_status = @status`;
+            params.push({ name: 'status', type: sql.VarChar(30), value: status });
+        }
+
+        if (search) {
+            whereClause += ` AND (
+                o.order_number LIKE '%' + @search + '%' OR 
+                ISNULL(o.invoice_no, '') LIKE '%' + @search + '%' OR 
+                c.mobile LIKE @search + '%' OR 
+                c.first_name LIKE '%' + @search + '%' OR 
+                EXISTS (
+                    SELECT 1 FROM dbo.OrderItems oi 
+                    WHERE oi.order_id = o.order_id AND oi.product_name LIKE '%' + @search + '%'
+                )
+            )`;
+            params.push({ name: 'search', type: sql.NVarChar(100), value: search.trim() });
+        }
+
+        const dataQuery = `
+            SELECT 
+                o.order_id,
+                o.order_number,
+                ISNULL(o.invoice_no, o.order_number) AS invoice_id,
+                o.order_date,
+                FORMAT(o.delivery_date, 'yyyy-MM-dd') AS delivery_date,
+                o.delivery_time,
+                o.total_amount,
+                o.advance_amount,
+                o.balance_amount,
+                o.order_status,
+                o.payment_status,
+                CASE 
+                    WHEN o.authorized_at IS NOT NULL OR o.order_status = 'Authorized' THEN 1 
+                    ELSE 0 
+                END AS is_authorized,
+                o.authorized_at,
+                u_auth.full_name AS authorized_by_name,
+                c.customer_id,
+                c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
+                c.mobile AS customer_mobile,
+                c.delivery_address,
+                ISNULL((
+                    SELECT STRING_AGG(
+                        oi.product_name + ' - ' + 
+                        CASE 
+                            WHEN oi.quantity = FLOOR(oi.quantity) THEN CAST(CAST(oi.quantity AS INT) AS VARCHAR(20))
+                            ELSE CAST(oi.quantity AS VARCHAR(20))
+                        END, 
+                        CHAR(10)
+                    ) 
+                    FROM dbo.OrderItems oi 
+                    WHERE oi.order_id = o.order_id
+                ), '') AS items_breakdown
+            FROM dbo.Orders o
+            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
+            LEFT JOIN dbo.Users u_auth ON o.authorized_by_user_id = u_auth.user_id
+            ${whereClause}
+            ORDER BY o.order_id DESC
+            OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY;
+
+            SELECT COUNT(*) AS total_count 
+            FROM dbo.Orders o
+            INNER JOIN dbo.Customers c ON o.customer_id = c.customer_id
+            ${whereClause};
+        `;
+
+        const result = await executeQuery(dataQuery, params);
+        res.json({
+            success: true,
+            total: result.recordsets[1][0].total_count,
+            page: parseInt(page, 10),
+            orders: result.recordsets[0]
+        });
+    } catch (error) {
+        console.error('Fetch Authorize Bills Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
 // 3. GET SINGLE ORDER DETAILS (Including Cake Inscriptions & Receipts)
 // Used for Order Details Modal & A5 Invoice Printing
 // =========================================================================
@@ -395,6 +643,7 @@ router.get('/:id', async (req, res) => {
                 o.*,
                 c.first_name + ' ' + ISNULL(c.last_name, '') AS customer_name,
                 c.mobile AS customer_mobile,
+                c.email AS customer_email,
                 c.landline AS customer_landline,
                 c.delivery_address AS customer_profile_address,
                 u.full_name AS cashier_name
@@ -576,12 +825,17 @@ router.put('/:id/cancel', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Order is already cancelled.' });
         }
 
-        // Update order status
+        // Update order status, cancelled_by, reason, cancelled_at
         const updateOrderReq = new sql.Request(transaction);
         updateOrderReq.input('orderId', sql.Int, orderId);
+        updateOrderReq.input('userId', sql.Int, user_id);
+        updateOrderReq.input('reason', sql.NVarChar(500), reason || 'CXL');
         await updateOrderReq.query(`
             UPDATE dbo.Orders
             SET order_status = 'Cancelled',
+                cancelled_by_user_id = @userId,
+                cancellation_reason = @reason,
+                cancelled_at = GETDATE(),
                 updated_at = GETDATE()
             WHERE order_id = @orderId
         `);
@@ -625,6 +879,81 @@ router.put('/:id/cancel', async (req, res) => {
 });
 
 // =========================================================================
+// 5.1 AUTHORIZE BILL / ORDER
+// Corresponds to Action -> Bill Authorize in Authorize Bills
+// =========================================================================
+router.put('/:id/authorize', async (req, res) => {
+    const pool = await getPool();
+    const transaction = new sql.Transaction(pool);
+
+    try {
+        const orderId = req.params.id;
+        const { user_id = 1 } = req.body;
+        const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
+
+        await transaction.begin();
+
+        // Check order
+        const checkReq = new sql.Request(transaction);
+        checkReq.input('orderId', sql.Int, orderId);
+        const checkRes = await checkReq.query(`
+            SELECT order_id, order_number, order_status, authorized_at 
+            FROM dbo.Orders WITH (UPDLOCK) 
+            WHERE order_id = @orderId
+        `);
+
+        if (checkRes.recordset.length === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ success: false, error: 'Order not found.' });
+        }
+
+        const order = checkRes.recordset[0];
+        if (order.order_status === 'Cancelled') {
+            await transaction.rollback();
+            return res.status(400).json({ success: false, error: 'Cannot authorize a cancelled order.' });
+        }
+
+        // Update order status, authorized_by_user_id, authorized_at
+        const updateOrderReq = new sql.Request(transaction);
+        updateOrderReq.input('orderId', sql.Int, orderId);
+        updateOrderReq.input('userId', sql.Int, user_id);
+        await updateOrderReq.query(`
+            UPDATE dbo.Orders
+            SET order_status = 'Authorized',
+                authorized_by_user_id = @userId,
+                authorized_at = GETDATE(),
+                updated_at = GETDATE()
+            WHERE order_id = @orderId
+        `);
+
+        // Record Audit Log
+        const auditReq = new sql.Request(transaction);
+        auditReq.input('record_id', sql.Int, orderId);
+        auditReq.input('user_id', sql.Int, user_id);
+        auditReq.input('description', sql.NVarChar(500), `Authorized Bill for Order ${order.order_number}`);
+        auditReq.input('ip_address', sql.VarChar(50), clientIp);
+        await auditReq.query(`
+            INSERT INTO dbo.AuditLogs (action_type, table_name, record_id, user_id, description, ip_address, log_time)
+            VALUES ('AUTHORIZE', 'Orders', @record_id, @user_id, @description, @ip_address, GETDATE())
+        `);
+
+        await transaction.commit();
+
+        res.json({
+            success: true,
+            order_id: orderId,
+            order_number: order.order_number,
+            order_status: 'Authorized',
+            message: `Bill #${order.order_number} has been authorized successfully.`
+        });
+    } catch (error) {
+        await transaction.rollback();
+        console.error('Authorize Bill Error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// =========================================================================
 // 6. UPDATE PRE-ORDER (Edit Order)
 // Corresponds to Action -> Edit Order in Manage Orders
 // =========================================================================
@@ -642,6 +971,7 @@ router.put('/:id', async (req, res) => {
             order_status,
             customer_name,
             customer_mobile,
+            customer_email,
             user_id = 1
         } = req.body;
         const clientIp = req.ip || req.connection.remoteAddress || '127.0.0.1';
@@ -688,15 +1018,17 @@ router.put('/:id', async (req, res) => {
         `);
 
         // 3. Update customer if provided
-        if ((customer_name || customer_mobile) && resolvedCustId) {
+        if ((customer_name || customer_mobile || customer_email) && resolvedCustId) {
             const updateCustReq = new sql.Request(transaction);
             updateCustReq.input('custId', sql.Int, resolvedCustId);
             updateCustReq.input('first_name', sql.NVarChar(100), customer_name || 'Walk-in Customer');
-            updateCustReq.input('mobile', sql.VarChar(20), customer_mobile);
+            updateCustReq.input('mobile', sql.VarChar(20), customer_mobile || null);
+            updateCustReq.input('email', sql.VarChar(100), customer_email ? customer_email.trim() : null);
             await updateCustReq.query(`
                 UPDATE dbo.Customers
                 SET first_name = @first_name,
                     mobile = COALESCE(@mobile, mobile),
+                    email = COALESCE(@email, email),
                     updated_at = GETDATE()
                 WHERE customer_id = @custId
             `);
