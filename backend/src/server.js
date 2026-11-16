@@ -28,22 +28,32 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/kitchen', kitchenRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 
-// Optional: Serve static production frontend (dist) if present
+// ========================================================
+// SERVE STATIC PRODUCTION FRONTEND (dist) & SPA ROUTING
+// ========================================================
 const path = require('path');
 const fs = require('fs');
+
+const exeDir = path.dirname(process.execPath);
+const cwd = process.cwd();
+
 const distCandidates = [
+    path.join(exeDir, '../dist'),
+    path.join(exeDir, 'dist'),
+    path.join(cwd, 'dist'),
+    path.join(cwd, '../dist'),
     path.join(__dirname, '../../dist'),
     path.join(__dirname, '../dist'),
-    path.join(__dirname, '../../frontend/dist')
+    path.join(__dirname, '../../frontend/dist'),
+    path.join(__dirname, '../../Client_Delivery/dist')
 ];
+
+let activeDistPath = null;
 for (const dPath of distCandidates) {
     if (fs.existsSync(dPath) && fs.existsSync(path.join(dPath, 'index.html'))) {
-        console.log(`📦 [TRB POS] Serving static production build from: ${dPath}`);
-        app.use(express.static(dPath));
-        app.get('*', (req, res, next) => {
-            if (req.path.startsWith('/api')) return next();
-            res.sendFile(path.join(dPath, 'index.html'));
-        });
+        activeDistPath = path.resolve(dPath);
+        console.log(`📦 [TRB POS] Serving static production build from: ${activeDistPath}`);
+        app.use(express.static(activeDistPath));
         break;
     }
 }
@@ -75,6 +85,52 @@ app.get('/api/health', async (req, res) => {
         });
     }
 });
+
+// ========================================================
+// SPA WILDCARD ROUTING / FALLBACK
+// ========================================================
+if (activeDistPath) {
+    app.get('*', (req, res, next) => {
+        if (req.path.startsWith('/api')) {
+            return res.status(404).json({ error: 'API endpoint not found', path: req.path });
+        }
+        res.sendFile(path.join(activeDistPath, 'index.html'));
+    });
+} else {
+    console.warn('⚠️ [TRB POS] Frontend dist folder not found. Running in API-only mode.');
+    app.get('/', (req, res) => {
+        res.status(200).send(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>The Royal Bakery - POS Server</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; text-align: center; padding: 60px 20px; background: #faf9f6; color: #333; }
+                    .card { max-width: 550px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); border-top: 5px solid #d97706; }
+                    h1 { color: #800020; margin-bottom: 8px; font-size: 24px; }
+                    .badge { display: inline-block; background: #ecfdf5; color: #059669; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 14px; margin-bottom: 20px; }
+                    a { color: #d97706; text-decoration: none; font-weight: 600; }
+                    p { font-size: 14px; line-height: 1.6; color: #666; }
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <h1>THE ROYAL BAKERY (EST. 1906)</h1>
+                    <div class="badge">● Backend API Server Running</div>
+                    <p>The backend API is online and responding on port <strong>${PORT}</strong>.</p>
+                    <p><a href="/api/health" target="_blank">View Live Database Health Status (/api/health) ➔</a></p>
+                    <hr style="border:none; border-top:1px solid #eee; margin:24px 0;" />
+                    <p style="color:#b45309; font-size:13px;">
+                        <strong>Frontend Web UI Notice:</strong><br/>
+                        The production 'dist' folder was not detected next to the backend folder.
+                        Please ensure the <code>dist/</code> folder is located next to <code>backend/</code>.
+                    </p>
+                </div>
+            </body>
+            </html>
+        `);
+    });
+}
 
 // ========================================================
 // START SERVER
