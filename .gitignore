@@ -22,9 +22,14 @@ yarn-debug.log*
 output/
 playwright-report/
 test-results/
-dist/
-build/
 frontend/dist/
+build/
+scratch/
+
+# Allow Client Delivery Package
+!Client_Delivery/dist/
+!Client_Delivery/dist/**
+!Client_Delivery/backend/.env
 
 # Operating system files
 .DS_Store

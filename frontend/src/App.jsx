@@ -20,6 +20,7 @@ import CreateUser from './pages/users/CreateUser';
 import ManageUsers from './pages/users/ManageUsers';
 import Reports from './pages/reports/Reports';
 import Promotions from './pages/promotions/Promotions';
+import UnderDevelopment from './pages/UnderDevelopment';
 
 export default function App() {
   return (
@@ -48,11 +49,11 @@ export default function App() {
               <Route path="cancel_orders" element={<CancelledOrders />} />
               <Route path="bill_authorized" element={<BillAuthorized />} />
               
-              {/* Menu 4: Chef Reports & Kitchen */}
-              <Route path="reports_cheff" element={<ChefReports />} />
+              {/* Menu 4: Chef Reports & Kitchen (Temporarily Under Development) */}
+              <Route path="reports_cheff" element={<UnderDevelopment />} />
               
-              {/* Menu 5: Delivery */}
-              <Route path="delivery" element={<Delivery />} />
+              {/* Menu 5: Delivery (Temporarily Under Development) */}
+              <Route path="delivery" element={<UnderDevelopment />} />
               
               {/* Menu 2: Main Access */}
               <Route path="customer_list" element={<CustomerList />} />
@@ -62,14 +63,14 @@ export default function App() {
               <Route path="create-users" element={<CreateUser />} />
               <Route path="manage-users" element={<ManageUsers />} />
               
-              {/* Menu 6 & 7: Reports & Promotions */}
-              <Route path="reports" element={<Reports />} />
-              <Route path="reports_all" element={<Reports />} />
-              <Route path="overall-invoices" element={<Reports />} />
-              <Route path="reports_products_only" element={<Reports />} />
-              <Route path="reports-overall" element={<Reports />} />
-              <Route path="all-payment" element={<Reports />} />
-              <Route path="promotions" element={<Promotions />} />
+              {/* Menu 6 & 7: Reports & Promotions (Temporarily Under Development) */}
+              <Route path="reports" element={<UnderDevelopment />} />
+              <Route path="reports_all" element={<UnderDevelopment />} />
+              <Route path="overall-invoices" element={<UnderDevelopment />} />
+              <Route path="reports_products_only" element={<UnderDevelopment />} />
+              <Route path="reports-overall" element={<UnderDevelopment />} />
+              <Route path="all-payment" element={<UnderDevelopment />} />
+              <Route path="promotions" element={<UnderDevelopment />} />
             </Route>
 
             {/* Catch-all Redirect */}

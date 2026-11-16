@@ -1,0 +1,19 @@
+http://localhost:5000
+
+# ==============================================================================
+# THE ROYAL BAKERY - PRE-ORDER & PRODUCTION POS
+# BACKEND API CONNECTION CONFIGURATION
+# ==============================================================================
+# Instructions:
+# 1. For Standalone Single PC:
+#    Leave the top line as: http://localhost:5000
+#
+# 2. For Local Area Network (LAN) / Multi-Counter / Kitchen Tablets:
+#    Change 'localhost' to your backend server PC's static IP address.
+#    Examples:
+#      http://192.168.1.100:5000
+#      http://192.168.8.10:5000
+#      http://10.0.0.15:5000
+#
+# Save this file and refresh your browser. No rebuild required.
+# ==============================================================================

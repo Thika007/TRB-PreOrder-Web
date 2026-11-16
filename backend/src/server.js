@@ -1,6 +1,6 @@
+require('./config/envLoader');
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
 const { getPool, executeQuery } = require('./config/db');
 
 // Route Handlers
@@ -27,6 +27,26 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/kitchen', kitchenRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Optional: Serve static production frontend (dist) if present
+const path = require('path');
+const fs = require('fs');
+const distCandidates = [
+    path.join(__dirname, '../../dist'),
+    path.join(__dirname, '../dist'),
+    path.join(__dirname, '../../frontend/dist')
+];
+for (const dPath of distCandidates) {
+    if (fs.existsSync(dPath) && fs.existsSync(path.join(dPath, 'index.html'))) {
+        console.log(`📦 [TRB POS] Serving static production build from: ${dPath}`);
+        app.use(express.static(dPath));
+        app.get('*', (req, res, next) => {
+            if (req.path.startsWith('/api')) return next();
+            res.sendFile(path.join(dPath, 'index.html'));
+        });
+        break;
+    }
+}
 
 // ========================================================
 // HEALTH CHECK & DATABASE CONNECTIVITY TEST ROUTE

@@ -2,22 +2,21 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
-  Cake, 
   Lock, 
   User, 
   Eye, 
   EyeOff, 
-  ShieldCheck, 
   ArrowRight, 
   AlertCircle,
-  Sparkles,
-  Server
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 
 export default function Login() {
   const [username, setUsername] = useState('admin');
   const [password, setPassword] = useState('Royal508501');
   const [showPassword, setShowPassword] = useState(false);
+  const [showTestAccounts, setShowTestAccounts] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [localError, setLocalError] = useState(null);
 
@@ -43,7 +42,7 @@ export default function Login() {
     if (res.success) {
       navigate(from, { replace: true });
     } else {
-      setLocalError(res.error);
+      setLocalError(res.error || 'Authentication failed. Please verify credentials.');
     }
   };
 
@@ -58,365 +57,446 @@ export default function Login() {
     <div style={{
       minHeight: '100vh',
       width: '100vw',
+      height: '100vh',
       display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#090d16',
-      backgroundImage: `
-        radial-gradient(circle at 10% 20%, rgba(217, 119, 6, 0.12) 0%, transparent 40%),
-        radial-gradient(circle at 90% 80%, rgba(30, 58, 138, 0.2) 0%, transparent 45%)
-      `,
-      padding: '20px',
-      position: 'relative',
-      overflow: 'hidden'
+      overflow: 'hidden',
+      backgroundColor: '#ffffff',
+      margin: 0,
+      padding: 0,
+      fontFamily: 'var(--font-sans, system-ui, -apple-system, sans-serif)',
+      boxSizing: 'border-box'
     }}>
-      {/* Background Decorative Rings */}
+      {/* ========================================================
+          LEFT COLUMN: FULL-HEIGHT FORM & BRANDING
+          ======================================================== */}
       <div style={{
-        position: 'absolute',
-        top: '-120px',
-        right: '-120px',
-        width: '450px',
-        height: '450px',
-        borderRadius: '50%',
-        border: '1px solid rgba(217, 119, 6, 0.08)',
-        pointerEvents: 'none'
-      }} />
-      <div style={{
-        position: 'absolute',
-        bottom: '-150px',
-        left: '-150px',
-        width: '500px',
-        height: '500px',
-        borderRadius: '50%',
-        border: '1px solid rgba(255, 255, 255, 0.03)',
-        pointerEvents: 'none'
-      }} />
-
-      {/* Main Glassmorphism Login Container */}
-      <div style={{
-        width: '100%',
-        maxWidth: '460px',
-        backgroundColor: 'rgba(15, 23, 42, 0.75)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        borderRadius: '24px',
-        padding: '40px 36px',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(217, 119, 6, 0.1)',
-        zIndex: 10,
-        position: 'relative'
+        flex: '1 1 50%',
+        width: '50%',
+        height: '100vh',
+        backgroundColor: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '40px 32px',
+        boxSizing: 'border-box',
+        position: 'relative',
+        zIndex: 5,
+        overflowY: 'auto'
       }}>
-        {/* BRAND EMBLEM & HEADER */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            margin: '0 auto 16px auto',
-            background: 'linear-gradient(135deg, #d97706, #b45309)',
-            borderRadius: '18px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 10px 25px rgba(217, 119, 6, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.4)'
-          }}>
-            <Cake size={34} color="#ffffff" />
-          </div>
-
-          <h1 style={{
-            fontSize: '22px',
-            fontWeight: 800,
-            color: '#ffffff',
-            letterSpacing: '0.6px',
-            marginBottom: '4px'
-          }}>
-            THE ROYAL BAKERY
-          </h1>
-          <p style={{
-            fontSize: '11px',
-            color: '#fbbf24',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '2px'
-          }}>
-            Pre-Order & Cake Production POS
-          </p>
-        </div>
-
-        {/* HIGH-SECURITY BADGE */}
+        {/* Centered Form Inner Wrapper */}
         <div style={{
+          width: '100%',
+          maxWidth: '440px',
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '8px',
-          background: 'rgba(16, 185, 129, 0.08)',
-          border: '1px solid rgba(16, 185, 129, 0.25)',
-          padding: '6px 14px',
-          borderRadius: '9999px',
-          marginBottom: '24px'
+          flexDirection: 'column'
         }}>
-          <ShieldCheck size={14} color="#10b981" />
-          <span style={{ fontSize: '11.5px', color: '#6ee7b7', fontWeight: 600 }}>
-            256-Bit Encrypted Session • MSSQL Express
-          </span>
-        </div>
-
-        {/* ERROR NOTIFICATION BANNER */}
-        {localError && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '10px',
-            background: 'rgba(225, 29, 72, 0.15)',
-            border: '1px solid rgba(225, 29, 72, 0.4)',
-            padding: '12px 14px',
-            borderRadius: '10px',
-            color: '#fecdd3',
-            fontSize: '13px',
-            marginBottom: '20px',
-            animation: 'fadeIn 0.2s ease-in-out'
-          }}>
-            <AlertCircle size={18} color="#f43f5e" style={{ flexShrink: 0, marginTop: '1px' }} />
-            <span>{localError}</span>
-          </div>
-        )}
-
-        {/* LOGIN FORM */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {/* USERNAME FIELD */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '12px',
-              fontWeight: 700,
-              color: '#cbd5e1',
-              marginBottom: '6px',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}>
-              System Username
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter counter username"
-                style={{
-                  width: '100%',
-                  padding: '12px 14px 12px 42px',
-                  backgroundColor: 'rgba(2, 6, 23, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '10px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  fontFamily: 'var(--font-mono)',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#d97706';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(217, 119, 6, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-              <User size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '13px' }} />
-            </div>
-          </div>
-
-          {/* PASSWORD FIELD */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                color: '#cbd5e1',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
-              }}>
-                Security Password
-              </label>
-            </div>
-            <div style={{ position: 'relative' }}>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter account password"
-                style={{
-                  width: '100%',
-                  padding: '12px 42px 12px 42px',
-                  backgroundColor: 'rgba(2, 6, 23, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '10px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  outline: 'none',
-                  transition: 'border-color 0.2s ease, box-shadow 0.2s ease'
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#d97706';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(217, 119, 6, 0.2)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.12)';
-                  e.target.style.boxShadow = 'none';
-                }}
-              />
-              <Lock size={18} color="#94a3b8" style={{ position: 'absolute', left: '14px', top: '13px' }} />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '12px',
-                  background: 'none',
-                  border: 'none',
-                  color: '#94a3b8',
-                  cursor: 'pointer',
-                  padding: '2px'
-                }}
-                title={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </div>
-
-          {/* SUBMIT BUTTON */}
-          <button
-            type="submit"
-            disabled={submitting}
-            style={{
-              width: '100%',
-              padding: '13px 20px',
-              marginTop: '8px',
-              background: 'linear-gradient(135deg, #d97706, #b45309)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '10px',
-              fontWeight: 700,
-              fontSize: '14.5px',
-              cursor: submitting ? 'not-allowed' : 'pointer',
+          {/* 1. TOP LOGO */}
+          <div style={{ marginBottom: '24px' }}>
+            <div style={{
+              width: '72px',
+              height: '72px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              boxShadow: '0 6px 18px rgba(185, 28, 28, 0.22)',
+              backgroundColor: '#991b1b',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              boxShadow: '0 4px 14px rgba(217, 119, 6, 0.4)',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              if (!submitting) e.currentTarget.style.transform = 'translateY(-1px)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0)';
-            }}
-          >
-            <span>{submitting ? 'Verifying Credentials...' : 'Authenticate & Open Counter'}</span>
-            {!submitting && <ArrowRight size={17} />}
-          </button>
-        </form>
-
-        {/* DEMO / SHIFT STAFF QUICK SELECTOR */}
-        <div style={{ marginTop: '28px', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '20px' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '10px'
-          }}>
-            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-              Quick Staff Profile Selection:
-            </span>
-            <span style={{ fontSize: '11px', color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Sparkles size={12} /> Test Accounts
-            </span>
+              justifyContent: 'center'
+            }}>
+              <img 
+                src="/logo.webp" 
+                alt="The Royal Bakery" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  if (e.currentTarget.parentElement) {
+                    e.currentTarget.parentElement.innerHTML = '<span style="color:#ffffff;font-weight:900;font-size:26px;">RB</span>';
+                  }
+                }}
+              />
+            </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          {/* 2. TITLE & SUBTITLE */}
+          <div style={{ marginBottom: '32px' }}>
+            <h1 style={{
+              fontSize: '28px',
+              fontWeight: 800,
+              color: '#1e293b',
+              letterSpacing: '-0.3px',
+              margin: '0 0 6px 0',
+              lineHeight: '1.2',
+              fontFamily: 'serif'
+            }}>
+              THE ROYAL BAKERY
+            </h1>
+            <p style={{
+              fontSize: '14px',
+              color: '#64748b',
+              fontWeight: 600,
+              letterSpacing: '0.2px',
+              margin: 0
+            }}>
+              Pre-Order &amp; Cake Production POS
+            </p>
+          </div>
+
+          {/* 3. ERROR BANNER */}
+          {localError && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              backgroundColor: '#fff1f2',
+              border: '1px solid #fecdd3',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              color: '#be123c',
+              fontSize: '13px',
+              marginBottom: '20px',
+              animation: 'fadeIn 0.2s ease-in-out'
+            }}>
+              <AlertCircle size={17} style={{ flexShrink: 0 }} />
+              <span>{localError}</span>
+            </div>
+          )}
+
+          {/* 4. LOGIN FORM */}
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* USERNAME FIELD */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#94a3b8',
+                marginBottom: '6px'
+              }}>
+                Username / Staff ID
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter counter username"
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px 10px 32px',
+                    border: 'none',
+                    borderBottom: '1.5px solid #cbd5e1',
+                    backgroundColor: 'transparent',
+                    color: '#0f172a',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderBottomColor = '#d97706';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderBottomColor = '#cbd5e1';
+                  }}
+                />
+                <User size={16} color="#94a3b8" style={{ position: 'absolute', left: '6px', top: '12px' }} />
+              </div>
+            </div>
+
+            {/* PASSWORD FIELD */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#94a3b8',
+                marginBottom: '6px'
+              }}>
+                Password
+              </label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter security password"
+                  style={{
+                    width: '100%',
+                    padding: '10px 36px 10px 32px',
+                    border: 'none',
+                    borderBottom: '1.5px solid #cbd5e1',
+                    backgroundColor: 'transparent',
+                    color: '#0f172a',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease'
+                  }}
+                  onFocus={(e) => {
+                    e.target.style.borderBottomColor = '#d97706';
+                  }}
+                  onBlur={(e) => {
+                    e.target.style.borderBottomColor = '#cbd5e1';
+                  }}
+                />
+                <Lock size={16} color="#94a3b8" style={{ position: 'absolute', left: '6px', top: '12px' }} />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '6px',
+                    top: '10px',
+                    background: 'none',
+                    border: 'none',
+                    color: '#94a3b8',
+                    cursor: 'pointer',
+                    padding: '2px'
+                  }}
+                  title={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+            </div>
+
+            {/* AUTHENTICATE BUTTON */}
+            <div style={{ marginTop: '8px' }}>
+              <button
+                type="submit"
+                disabled={submitting}
+                style={{
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '9999px',
+                  padding: '13px 48px',
+                  fontWeight: 700,
+                  fontSize: '15px',
+                  cursor: submitting ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(217, 119, 6, 0.4)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  if (!submitting) {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 6px 20px rgba(217, 119, 6, 0.45)';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 4px 14px rgba(217, 119, 6, 0.4)';
+                }}
+              >
+                <span>{submitting ? 'Verifying...' : 'Authenticate'}</span>
+                {!submitting && <ArrowRight size={17} />}
+              </button>
+            </div>
+          </form>
+
+          {/* 5. TEST ACCOUNTS TOGGLE LINK (Icon Removed per user request) */}
+          <div style={{ marginTop: '22px' }}>
             <button
               type="button"
-              onClick={() => quickFill('admin', 'Royal508501')}
+              onClick={() => setShowTestAccounts(!showTestAccounts)}
               style={{
-                padding: '7px 10px',
-                background: username === 'admin' ? 'rgba(217, 119, 6, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: username === 'admin' ? '1px solid #d97706' : '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                color: username === 'admin' ? '#fbbf24' : '#cbd5e1',
-                fontSize: '11.5px',
-                fontWeight: 600,
-                textAlign: 'left',
-                cursor: 'pointer'
+                background: 'none',
+                border: 'none',
+                color: '#d97706',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                padding: '4px 0',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px'
               }}
             >
-              👑 Admin (System)
+              <span style={{ textDecoration: 'underline' }}>Test Accounts</span>
+              {showTestAccounts ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             </button>
 
-            <button
-              type="button"
-              onClick={() => quickFill('cashier1', 'Cashier@TRB1')}
-              style={{
-                padding: '7px 10px',
-                background: username === 'cashier1' ? 'rgba(217, 119, 6, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: username === 'cashier1' ? '1px solid #d97706' : '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                color: username === 'cashier1' ? '#fbbf24' : '#cbd5e1',
-                fontSize: '11.5px',
-                fontWeight: 600,
-                textAlign: 'left',
-                cursor: 'pointer'
-              }}
-            >
-              💼 Cashier 01
-            </button>
+            {/* QUICK STAFF PROFILE SELECTION (Revealed only when link is clicked) */}
+            {showTestAccounts && (
+              <div style={{
+                marginTop: '12px',
+                padding: '14px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '12px',
+                animation: 'fadeIn 0.2s ease-out'
+              }}>
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#64748b',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em',
+                  marginBottom: '10px'
+                }}>
+                  Quick Staff Profile Selection:
+                </div>
 
-            <button
-              type="button"
-              onClick={() => quickFill('supervisor', 'Super@TRB2026')}
-              style={{
-                padding: '7px 10px',
-                background: username === 'supervisor' ? 'rgba(217, 119, 6, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: username === 'supervisor' ? '1px solid #d97706' : '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                color: username === 'supervisor' ? '#fbbf24' : '#cbd5e1',
-                fontSize: '11.5px',
-                fontWeight: 600,
-                textAlign: 'left',
-                cursor: 'pointer'
-              }}
-            >
-              ⭐ Supervisor
-            </button>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => quickFill('admin', 'Royal508501')}
+                    style={{
+                      padding: '8px 12px',
+                      background: username === 'admin' ? '#fef3c7' : '#ffffff',
+                      border: username === 'admin' ? '1.5px solid #d97706' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      color: username === 'admin' ? '#b45309' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    👑 Admin (System)
+                  </button>
 
-            <button
-              type="button"
-              onClick={() => quickFill('chef_prema', 'Chef@Prema2026')}
-              style={{
-                padding: '7px 10px',
-                background: username === 'chef_prema' ? 'rgba(217, 119, 6, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-                border: username === 'chef_prema' ? '1px solid #d97706' : '1px solid rgba(255, 255, 255, 0.08)',
-                borderRadius: '8px',
-                color: username === 'chef_prema' ? '#fbbf24' : '#cbd5e1',
-                fontSize: '11.5px',
-                fontWeight: 600,
-                textAlign: 'left',
-                cursor: 'pointer'
-              }}
-            >
-              🎂 Chef Premaratna
-            </button>
+                  <button
+                    type="button"
+                    onClick={() => quickFill('cashier1', 'Cashier@TRB1')}
+                    style={{
+                      padding: '8px 12px',
+                      background: username === 'cashier1' ? '#fef3c7' : '#ffffff',
+                      border: username === 'cashier1' ? '1.5px solid #d97706' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      color: username === 'cashier1' ? '#b45309' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    💼 Cashier 01
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => quickFill('supervisor', 'Super@TRB2026')}
+                    style={{
+                      padding: '8px 12px',
+                      background: username === 'supervisor' ? '#fef3c7' : '#ffffff',
+                      border: username === 'supervisor' ? '1.5px solid #d97706' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      color: username === 'supervisor' ? '#b45309' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    ⭐ Supervisor
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => quickFill('chef_prema', 'Chef@Prema2026')}
+                    style={{
+                      padding: '8px 12px',
+                      background: username === 'chef_prema' ? '#fef3c7' : '#ffffff',
+                      border: username === 'chef_prema' ? '1.5px solid #d97706' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      color: username === 'chef_prema' ? '#b45309' : '#334155',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    🎂 Chef Premaratna
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        {/* FOOTER INFO */}
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '11px', color: '#64748b' }}>
-          <span>The Royal Bakery • No. 508, Galle Road, Colombo 06</span>
+      {/* ========================================================
+          RIGHT COLUMN: FULL-HEIGHT BAKERY SHOWCASE & ORGANIC CURVE
+          ======================================================== */}
+      <div style={{
+        flex: '1 1 50%',
+        width: '50%',
+        height: '100vh',
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: '#0f172a'
+      }}>
+        {/* Organic Curved Wave Divider Overlay (SVG) */}
+        <svg 
+          viewBox="0 0 100 800" 
+          preserveAspectRatio="none" 
+          style={{ 
+            position: 'absolute', 
+            top: '-2px', 
+            bottom: '-2px', 
+            left: '-2px', 
+            height: 'calc(100% + 4px)', 
+            width: '110px', 
+            zIndex: 3, 
+            pointerEvents: 'none' 
+          }}
+        >
+          <path 
+            d="M 0,-5 L 40,-5 C 95,140 10,290 65,440 C 115,590 20,700 80,805 L 0,805 Z" 
+            fill="#ffffff" 
+          />
+        </svg>
+
+        {/* Full-Height Bakery Imagery: Cake on Top & Croissants on Bottom */}
+        <div style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          {/* Top Showcase: Royal Chocolate Celebration Cake */}
+          <div style={{
+            flex: '1 1 50%',
+            position: 'relative',
+            overflow: 'hidden',
+            backgroundImage: 'url(/bakery-showcase.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 40%'
+          }}>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.1) 0%, rgba(15, 23, 42, 0.35) 100%)'
+            }} />
+          </div>
+
+          {/* Bottom Showcase: Fresh Baked Artisan Croissants & Pastries */}
+          <div style={{
+            flex: '1 1 50%',
+            position: 'relative',
+            overflow: 'hidden',
+            backgroundImage: 'url(/bakery-pastry.jpg)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center 35%'
+          }}>
+            <div style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(0deg, rgba(15, 23, 42, 0.35) 0%, rgba(15, 23, 42, 0.1) 100%)'
+            }} />
+          </div>
         </div>
       </div>
     </div>
   );
 }
-
