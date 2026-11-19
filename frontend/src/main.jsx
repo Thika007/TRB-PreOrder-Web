@@ -19,6 +19,20 @@ async function bootstrap() {
         if (base && !base.startsWith('http://') && !base.startsWith('https://')) {
           base = 'http://' + base;
         }
+
+        // Auto-upgrade to HTTPS if loaded over HTTPS to prevent Mixed Content & 301 redirect failures
+        if (window.location.protocol === 'https:' && base.startsWith('http://')) {
+          base = base.replace(/^http:\/\//i, 'https://');
+          console.log('🔒 [TRB POS] Auto-upgraded connection URL to HTTPS:', base);
+        }
+
+        // If visited from a public domain and connection.txt has localhost, use the public domain origin
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+          if (base.includes('localhost') || base.includes('127.0.0.1')) {
+            base = window.location.origin;
+          }
+        }
+
         if (base) {
           axios.defaults.baseURL = base;
           console.log('🔗 [TRB POS] Backend Connection URL:', axios.defaults.baseURL);

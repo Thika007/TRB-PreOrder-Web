@@ -65,7 +65,13 @@ export function AuthProvider({ children }) {
       if (err.response?.data?.error) {
         message = err.response.data.error;
       } else if (!err.response) {
-        message = '⚠️ Backend API Server is offline (Cannot reach http://localhost:5000). Please start the backend server.';
+        message = '⚠️ Backend API Server is unreachable. Check network or HTTPS certificate.';
+      } else if (err.response.status === 404) {
+        message = '⚠️ API endpoint not found (404). If accessing via HTTPS, ensure connection.txt uses https://.';
+      } else if (err.response.status === 502) {
+        message = '⚠️ Server Error 502 (Bad Gateway). The backend server binary is not reachable.';
+      } else if (err.response.status === 500) {
+        message = '⚠️ Internal Server Error (500). Please check backend console / database connection.';
       }
       setAuthError(message);
       return { success: false, error: message };

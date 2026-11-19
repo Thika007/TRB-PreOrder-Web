@@ -5,7 +5,7 @@ http://localhost:5000
 # BACKEND API CONNECTION CONFIGURATION
 # ==============================================================================
 # Instructions:
-# 1. For Standalone Single PC:
+# 1. For Standalone Single PC (Default):
 #    Leave the top line as: http://localhost:5000
 #
 # 2. For Local Area Network (LAN) / Multi-Counter / Kitchen Tablets:
@@ -14,6 +14,11 @@ http://localhost:5000
 #      http://192.168.1.100:5000
 #      http://192.168.8.10:5000
 #      http://10.0.0.15:5000
+#
+# 3. For Public Domains / Cloudflare Hosting (IMPORTANT):
+#    Always specify 'https://' with an 's' to prevent Mixed Content security blocking!
+#    Examples:
+#      https://trb.danupos.online
 #
 # Save this file and refresh your browser. No rebuild required.
 # ==============================================================================
