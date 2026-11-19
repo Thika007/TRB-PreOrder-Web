@@ -1,7 +1,7 @@
 require('./config/envLoader');
 const express = require('express');
 const cors = require('cors');
-const { getPool, executeQuery } = require('./config/db');
+const { getPool, executeQuery, getLastDiagnostics } = require('./config/db');
 
 // Route Handlers
 const authRoutes = require('./routes/auth.routes');
@@ -75,13 +75,16 @@ app.get('/api/health', async (req, res) => {
             status: 'online',
             service: 'The Royal Bakery Pre-Order System Backend API',
             database_status: 'Connected',
-            db_info: result.recordset[0]
+            db_info: result.recordset[0],
+            diagnostics: getLastDiagnostics()
         });
     } catch (error) {
         res.status(500).json({
             status: 'degraded',
+            service: 'The Royal Bakery Pre-Order System Backend API',
             database_status: 'Disconnected',
-            error: error.message
+            error: error.message,
+            diagnostics: getLastDiagnostics()
         });
     }
 });
@@ -130,6 +133,41 @@ if (activeDistPath) {
             </html>
         `);
     });
+}
+
+// ========================================================
+// CLI DIAGNOSTIC MODE (--test-db)
+// ========================================================
+if (process.argv.includes('--test-db')) {
+    console.log(`====================================================`);
+    console.log(`🔍 [DIAGNOSTIC TEST] Testing SQL Server Connection...`);
+    console.log(`====================================================`);
+    (async () => {
+        try {
+            const pool = await getPool();
+            const result = await pool.request().query(`
+                SELECT 
+                    GETDATE() AS server_time,
+                    DB_NAME() AS current_database,
+                    @@VERSION AS sql_server_version
+            `);
+            const row = result.recordset[0];
+            console.log(`\n================================================================================`);
+            console.log(`🎉 [TEST PASSED] DATABASE CONNECTION IS 100% SUCCESSFUL!`);
+            console.log(`--------------------------------------------------------------------------------`);
+            console.log(`   Connected Database : ${row.current_database}`);
+            console.log(`   SQL Server Version : ${row.sql_server_version.split('\n')[0]}`);
+            console.log(`   Server Timestamp   : ${row.server_time}`);
+            console.log(`================================================================================`);
+            console.log(`✅ System is fully ready to process pre-orders, kitchen sheets, and bills.`);
+            process.exit(0);
+        } catch (err) {
+            console.error(`\n❌ [TEST FAILED] Could not establish connection to SQL Server.`);
+            console.error(`   Please review the troubleshooting steps printed above.`);
+            process.exit(1);
+        }
+    })();
+    return;
 }
 
 // ========================================================

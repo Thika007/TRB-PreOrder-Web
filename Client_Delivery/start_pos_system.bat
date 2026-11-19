@@ -7,7 +7,7 @@ echo    THE ROYAL BAKERY (EST. 1906) - PRE-ORDER & PRODUCTION POS
 echo =====================================================================
 echo.
 echo [1/3] Starting Standalone Backend Binary...
-start "" "backend\trb-pos-backend.exe"
+start "" /d "%~dp0backend" "%~dp0backend\trb-pos-backend.exe"
 
 echo [2/3] Waiting for backend and database connection...
 timeout /t 3 /nobreak >nul
