@@ -84,13 +84,19 @@ set "ENV_PASS=sqladmin"
 for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
     set "KEY=%%A"
     set "VAL=%%B"
-    if /i "!KEY!"=="DB_USER" set "ENV_USER=!VAL!"
-    if /i "!KEY!"=="DB_PASSWORD" set "ENV_PASS=!VAL!"
+    if /i "!KEY!"=="DB_USER" (
+        set "ENV_USER=!VAL!"
+        set "ENV_USER=!ENV_USER:"=!"
+    )
+    if /i "!KEY!"=="DB_PASSWORD" (
+        set "ENV_PASS=!VAL!"
+        set "ENV_PASS=!ENV_PASS:"=!"
+    )
 )
 
 echo Found DB_USER=!ENV_USER! in .env
 echo [Executing] Connecting to %SQL_SERVER% using credentials from .env ...
-sqlcmd -S %SQL_SERVER% -U !ENV_USER! -P "!ENV_PASS!" -i TRB_PreOrder_Database_Schema.sql
+sqlcmd -S %SQL_SERVER% -U "!ENV_USER!" -P "!ENV_PASS!" -i TRB_PreOrder_Database_Schema.sql
 if %ERRORLEVEL% EQU 0 goto SUCCESS
 goto FAILED
 
