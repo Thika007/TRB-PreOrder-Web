@@ -13,6 +13,7 @@ import BillAuthorized from './pages/orders/BillAuthorized';
 import ChefReports from './pages/kitchen/ChefReports';
 import Delivery from './pages/kitchen/Delivery';
 import CustomerList from './pages/customers/CustomerList';
+import CreateCustomer from './pages/customers/CreateCustomer';
 import ManageProducts from './pages/products/ManageProducts';
 import ManageCategories from './pages/categories/ManageCategories';
 import ManageSubCategories from './pages/categories/ManageSubCategories';
@@ -56,6 +57,7 @@ export default function App() {
               <Route path="delivery" element={<UnderDevelopment />} />
               
               {/* Menu 2: Main Access */}
+              <Route path="create-customer" element={<CreateCustomer />} />
               <Route path="customer_list" element={<CustomerList />} />
               <Route path="add-product" element={<ManageProducts />} />
               <Route path="manage-categories" element={<ManageCategories />} />

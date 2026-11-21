@@ -86,6 +86,7 @@ router.post('/', async (req, res) => {
         const custLandline = customer?.telephone ? customer.telephone.trim() : null;
         const custEmail = customer?.email ? customer.email.trim() : null;
         const custAddress = delivery_address || customer?.delivery_address || null;
+        const custType = customer?.customer_type || 'Normal';
 
         if (!finalCustomerId && custMobile) {
             // Check if customer exists by mobile
@@ -105,12 +106,14 @@ router.post('/', async (req, res) => {
                 updateCustReq.input('landline', sql.VarChar(20), custLandline);
                 updateCustReq.input('email', sql.VarChar(100), custEmail);
                 updateCustReq.input('delivery_address', sql.NVarChar(500), custAddress);
+                updateCustReq.input('customer_type', sql.VarChar(20), custType);
                 await updateCustReq.query(`
                     UPDATE dbo.Customers 
                     SET first_name = @first_name, title = @title, 
                         landline = COALESCE(@landline, landline), 
                         email = COALESCE(@email, email),
                         delivery_address = COALESCE(@delivery_address, delivery_address), 
+                        customer_type = COALESCE(@customer_type, customer_type),
                         updated_at = GETDATE()
                     WHERE customer_id = @cust_id
                 `);
@@ -123,15 +126,16 @@ router.post('/', async (req, res) => {
                 newCustReq.input('landline', sql.VarChar(20), custLandline);
                 newCustReq.input('email', sql.VarChar(100), custEmail);
                 newCustReq.input('delivery_address', sql.NVarChar(500), custAddress);
+                newCustReq.input('customer_type', sql.VarChar(20), custType);
                 const newCustRes = await newCustReq.query(`
-                    INSERT INTO dbo.Customers (title, first_name, mobile, landline, email, delivery_address, created_at, updated_at)
+                    INSERT INTO dbo.Customers (title, first_name, mobile, landline, email, delivery_address, customer_type, created_at, updated_at)
                     OUTPUT INSERTED.customer_id
-                    VALUES (@title, @first_name, @mobile, @landline, @email, @delivery_address, GETDATE(), GETDATE())
+                    VALUES (@title, @first_name, @mobile, @landline, @email, @delivery_address, @customer_type, GETDATE(), GETDATE())
                 `);
                 finalCustomerId = newCustRes.recordset[0].customer_id;
             }
-        } else if (finalCustomerId && (custEmail || custFirstName || custLandline || custAddress)) {
-            // Update customer if customer was pre-selected from autocomplete but new email or details were entered
+        } else if (finalCustomerId && (custEmail || custFirstName || custLandline || custAddress || custType)) {
+            // Update customer if customer was pre-selected from autocomplete but new details were entered
             const updateCustReq = new sql.Request(transaction);
             updateCustReq.input('cust_id', sql.Int, finalCustomerId);
             updateCustReq.input('first_name', sql.NVarChar(100), custFirstName);
@@ -139,6 +143,7 @@ router.post('/', async (req, res) => {
             updateCustReq.input('landline', sql.VarChar(20), custLandline);
             updateCustReq.input('email', sql.VarChar(100), custEmail);
             updateCustReq.input('delivery_address', sql.NVarChar(500), custAddress);
+            updateCustReq.input('customer_type', sql.VarChar(20), custType);
             await updateCustReq.query(`
                 UPDATE dbo.Customers 
                 SET first_name = COALESCE(NULLIF(@first_name, ''), first_name), 
@@ -146,6 +151,7 @@ router.post('/', async (req, res) => {
                     landline = COALESCE(@landline, landline), 
                     email = COALESCE(@email, email),
                     delivery_address = COALESCE(@delivery_address, delivery_address), 
+                    customer_type = COALESCE(@customer_type, customer_type),
                     updated_at = GETDATE()
                 WHERE customer_id = @cust_id
             `);

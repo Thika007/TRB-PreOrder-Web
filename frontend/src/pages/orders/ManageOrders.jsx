@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '../../context/ToastContext';
+import { printOrderInvoice } from '../../utils/invoicePrinter';
 
 export default function ManageOrders() {
   const { showSuccess, showError } = useToast();
@@ -178,28 +179,24 @@ export default function ManageOrders() {
     }
   };
 
-  // Open Print (Receipt or A5)
+  // Direct Print (80mm Receipt or A5 Invoice) - No second confirmation modal!
   const handleOpenPrint = async (order, mode) => {
     setLoadingPrint(true);
     try {
       const res = await axios.get(`/api/orders/${order.order_id}`);
       if (res.data.success) {
-        setPrintModalData({
-          order: res.data.order,
-          items: res.data.items || [],
-          payments: res.data.payments || [],
-          mode: mode
-        });
+        printOrderInvoice(
+          res.data.order,
+          res.data.items || [],
+          res.data.payments || [],
+          mode
+        );
+      } else {
+        printOrderInvoice(order, [], [], mode);
       }
     } catch (err) {
       console.error('Failed to load order details for print:', err);
-      // Fallback with order record
-      setPrintModalData({
-        order: order,
-        items: [],
-        payments: [],
-        mode: mode
-      });
+      printOrderInvoice(order, [], [], mode);
     } finally {
       setLoadingPrint(false);
     }

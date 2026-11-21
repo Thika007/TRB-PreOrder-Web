@@ -93,6 +93,7 @@ export default function TopNavigation() {
 
   // Check active routes
   const isMainAccessActive = [
+    '/create-customer',
     '/customer_list',
     '/add-product',
     '/manage-categories',
@@ -235,6 +236,11 @@ export default function TopNavigation() {
                   </div>
                 </div>
 
+                {/* Create Customer */}
+                <NavLink to="/create-customer" className="dropdown-menu-row">
+                  <span className="row-text">Create Customer</span>
+                </NavLink>
+
                 {/* Customer List */}
                 <NavLink to="/customer_list" className="dropdown-menu-row">
                   <span className="row-text">Customer List</span>
@@ -370,7 +376,7 @@ export default function TopNavigation() {
               </div>
             </div>
 
-            {/* 8. SMS PROMOTIONS */}
+            {/* 8. SMS PROMOTIONS & 9. DELIVERY (Temporarily hidden while development is on hold)
             <NavLink
               to="/promotions"
               className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
@@ -381,7 +387,6 @@ export default function TopNavigation() {
               <span className="sub-nav-label">SMS Promotions</span>
             </NavLink>
 
-            {/* 9. DELIVERY */}
             <NavLink
               to="/delivery"
               className={({ isActive }) => `sub-nav-tab ${isActive ? 'active' : ''}`}
@@ -391,6 +396,7 @@ export default function TopNavigation() {
               </div>
               <span className="sub-nav-label">Delivery</span>
             </NavLink>
+            */}
           </div>
 
           {/* RIGHT SIDE: MODERN DIGITAL CLOCK WIDGET */}

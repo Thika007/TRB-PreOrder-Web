@@ -15,7 +15,9 @@ import {
   DollarSign,
   Cake,
   FileText,
-  X
+  X,
+  Pencil,
+  Check
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
@@ -30,23 +32,28 @@ export default function CreateOrder() {
   const [mainCategories, setMainCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
+  const [greetingsList, setGreetingsList] = useState([]);
+  const [showGreetingsModal, setShowGreetingsModal] = useState(false);
+  const [newGreetingText, setNewGreetingText] = useState('');
+  const [savingGreeting, setSavingGreeting] = useState(false);
+  const [greetingModalError, setGreetingModalError] = useState('');
   const [loadingCatalog, setLoadingCatalog] = useState(true);
 
   // Active Item Builder State
   const [itemMainCatId, setItemMainCatId] = useState('');
   const [itemSubCatId, setItemSubCatId] = useState('');
   const [itemProductId, setItemProductId] = useState('');
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const productInputRef = useRef(null);
+  const [editingItemId, setEditingItemId] = useState(null);
   const [itemPrice, setItemPrice] = useState('');
   const [itemQty, setItemQty] = useState(1);
   const [itemDescription, setItemDescription] = useState('');
   const [itemGreeting1, setItemGreeting1] = useState('None');
-  const [itemGreeting2, setItemGreeting2] = useState('None');
+  const [itemGreeting2, setItemGreeting2] = useState('');
   const [itemGreetingInfo2, setItemGreetingInfo2] = useState('');
   const [itemStatus, setItemStatus] = useState('Pending');
-
-  // Filtered dropdown lists for item builder
-  const [filteredSubCategories, setFilteredSubCategories] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
 
   // ========================================================
   // 2. ORDER ITEMS CART STATE
@@ -61,6 +68,7 @@ export default function CreateOrder() {
   const [custMobile, setCustMobile] = useState('');
   const [custTelephone, setCustTelephone] = useState('');
   const [custEmail, setCustEmail] = useState('');
+  const [custType, setCustType] = useState('Normal');
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   
   // Tomorrow's date in YYYY-MM-DD
@@ -70,10 +78,14 @@ export default function CreateOrder() {
   const [deliveryTime, setDeliveryTime] = useState('00:00');
   const [deliveryAddress, setDeliveryAddress] = useState('');
 
-  // Mobile autocomplete state
+  // Mobile & First Name autocomplete state
   const [mobileSuggestions, setMobileSuggestions] = useState([]);
   const [showMobileDropdown, setShowMobileDropdown] = useState(false);
   const mobileInputRef = useRef(null);
+
+  const [nameSuggestions, setNameSuggestions] = useState([]);
+  const [showNameDropdown, setShowNameDropdown] = useState(false);
+  const nameInputRef = useRef(null);
 
   // ========================================================
   // 4. PAYMENT & TOTALS STATE
@@ -97,10 +109,11 @@ export default function CreateOrder() {
     async function loadCatalog() {
       try {
         setLoadingCatalog(true);
-        const [catsRes, subcatsRes, prodsRes] = await Promise.all([
+        const [catsRes, subcatsRes, prodsRes, greetRes] = await Promise.all([
           axios.get('/api/products/categories'),
           axios.get('/api/products/subcategories'),
-          axios.get('/api/products?is_available=1')
+          axios.get('/api/products?is_available=1'),
+          axios.get('/api/greetings').catch(() => ({ data: { success: false, greetings: [] } }))
         ]);
 
         if (catsRes.data.success) {
@@ -111,6 +124,9 @@ export default function CreateOrder() {
         }
         if (prodsRes.data.success) {
           setAllProducts(prodsRes.data.products || []);
+        }
+        if (greetRes.data.success) {
+          setGreetingsList(greetRes.data.greetings || []);
         }
       } catch (err) {
         console.error('Error loading product catalog for orders:', err);
@@ -123,67 +139,116 @@ export default function CreateOrder() {
     loadCatalog();
   }, []);
 
-  // Sync Subcategories when Main Category changes
-  useEffect(() => {
-    if (!itemMainCatId || itemMainCatId === '0') {
-      setFilteredSubCategories([]);
-      setItemSubCatId('');
-      setFilteredProducts([]);
-      setItemProductId('');
-      setItemPrice('');
-      return;
-    }
+  // Computed Subcategories & Product Suggestions for Searchable Product Autocomplete
+  const filteredSubCategories = itemMainCatId
+    ? subCategories.filter(s => String(s.main_cat_id) === String(itemMainCatId))
+    : [];
 
-    // Filter subcategories for this main category
-    const subs = subCategories.filter(s => String(s.main_cat_id) === String(itemMainCatId));
-    setFilteredSubCategories(subs);
+  const productSuggestions = (() => {
+    let base = allProducts;
+    if (itemMainCatId) {
+      base = base.filter(p => String(p.main_cat_id) === String(itemMainCatId));
+    }
+    if (itemSubCatId) {
+      base = base.filter(p => String(p.sub_cat_id) === String(itemSubCatId));
+    }
+    const q = productSearchQuery.trim().toLowerCase();
+    if (q) {
+      base = base.filter(p =>
+        (p.product_name && p.product_name.toLowerCase().includes(q)) ||
+        (p.product_code && p.product_code.toLowerCase().includes(q))
+      );
+    }
+    return base.slice(0, 20);
+  })();
+
+  const handleMainCatChange = (val) => {
+    setItemMainCatId(val);
     setItemSubCatId('');
-
-    // Filter products matching main category
-    const prods = allProducts.filter(p => String(p.main_cat_id) === String(itemMainCatId));
-    setFilteredProducts(prods);
     setItemProductId('');
+    setProductSearchQuery('');
     setItemPrice('');
-  }, [itemMainCatId, subCategories, allProducts]);
+  };
 
-  // Sync Products when Subcategory changes
-  useEffect(() => {
-    if (!itemSubCatId || itemSubCatId === '0') {
-      if (itemMainCatId) {
-        const prods = allProducts.filter(p => String(p.main_cat_id) === String(itemMainCatId));
-        setFilteredProducts(prods);
+  const handleSubCatChange = (val) => {
+    setItemSubCatId(val);
+    setItemProductId('');
+    setProductSearchQuery('');
+    setItemPrice('');
+  };
+
+  const handleSelectProduct = (prd) => {
+    setItemMainCatId(prd.main_cat_id ? String(prd.main_cat_id) : '');
+    setItemSubCatId(prd.sub_cat_id ? String(prd.sub_cat_id) : '');
+    setItemProductId(String(prd.product_id));
+    setProductSearchQuery(`${prd.product_name}${prd.net_weight ? ` (${prd.net_weight})` : ''}`);
+    setItemPrice(prd.unit_price !== undefined ? Number(prd.unit_price).toFixed(2) : '');
+    setShowProductDropdown(false);
+  };
+
+  const handleClearOrderInfo = () => {
+    setItemMainCatId('');
+    setItemSubCatId('');
+    setItemProductId('');
+    setProductSearchQuery('');
+    setItemPrice('');
+    setItemQty(1);
+    setItemDescription('');
+    setItemGreeting1('None');
+    setItemGreeting2('');
+    setItemGreetingInfo2('');
+    setItemStatus('Pending');
+    setEditingItemId(null);
+    setShowProductDropdown(false);
+  };
+
+  // Manage Custom Greetings in Database (dbo.Greetings)
+  const handleAddGreetingOption = async (e) => {
+    e.preventDefault();
+    setGreetingModalError('');
+    const txt = newGreetingText.trim();
+    if (!txt) {
+      setGreetingModalError('Please enter a greeting text.');
+      return;
+    }
+    setSavingGreeting(true);
+    try {
+      const res = await axios.post('/api/greetings', { greeting_text: txt });
+      if (res.data.success && res.data.greeting) {
+        setGreetingsList(prev => {
+          const exists = prev.some(g => g.greeting_id === res.data.greeting.greeting_id);
+          return exists ? prev : [...prev, res.data.greeting];
+        });
+        setItemGreeting1(res.data.greeting.greeting_text);
+        setNewGreetingText('');
       } else {
-        setFilteredProducts([]);
+        setGreetingModalError(res.data.error || 'Failed to save greeting.');
       }
-      setItemProductId('');
-      setItemPrice('');
-      return;
+    } catch (err) {
+      setGreetingModalError(err.response?.data?.error || err.message || 'Failed to save greeting.');
+    } finally {
+      setSavingGreeting(false);
     }
+  };
 
-    // Filter products matching both main and sub category
-    const prods = allProducts.filter(
-      p => String(p.main_cat_id) === String(itemMainCatId) && String(p.sub_cat_id) === String(itemSubCatId)
-    );
-    setFilteredProducts(prods);
-    setItemProductId('');
-    setItemPrice('');
-  }, [itemSubCatId, itemMainCatId, allProducts]);
-
-  // Auto-fill price when product is selected
-  useEffect(() => {
-    if (!itemProductId || itemProductId === '0') {
-      setItemPrice('');
-      return;
+  const handleDeleteGreetingOption = async (id, text) => {
+    try {
+      const res = await axios.delete(`/api/greetings/${id}`);
+      if (res.data.success) {
+        setGreetingsList(prev => prev.filter(g => g.greeting_id !== id));
+        if (itemGreeting1 === text) setItemGreeting1('None');
+      }
+    } catch (err) {
+      setGreetingModalError(err.response?.data?.error || 'Failed to remove greeting.');
     }
-
-    const prd = allProducts.find(p => String(p.product_id) === String(itemProductId));
-    if (prd) {
-      setItemPrice(prd.unit_price !== undefined ? Number(prd.unit_price).toFixed(2) : '');
-    }
-  }, [itemProductId, allProducts]);
+  };
 
   // Auto-search customers by mobile
   useEffect(() => {
+    if (selectedCustomerId) {
+      setShowMobileDropdown(false);
+      return;
+    }
     const q = custMobile.trim();
     if (q.length >= 3) {
       const timer = setTimeout(async () => {
@@ -205,7 +270,36 @@ export default function CreateOrder() {
       setMobileSuggestions([]);
       setShowMobileDropdown(false);
     }
-  }, [custMobile]);
+  }, [custMobile, selectedCustomerId]);
+
+  // Auto-search customers by First Name
+  useEffect(() => {
+    if (selectedCustomerId) {
+      setShowNameDropdown(false);
+      return;
+    }
+    const q = custFirstName.trim();
+    if (q.length >= 2) {
+      const timer = setTimeout(async () => {
+        try {
+          const res = await axios.get(`/api/customers/search?q=${encodeURIComponent(q)}`);
+          if (res.data.success && res.data.customers.length > 0) {
+            setNameSuggestions(res.data.customers);
+            setShowNameDropdown(true);
+          } else {
+            setNameSuggestions([]);
+            setShowNameDropdown(false);
+          }
+        } catch (e) {
+          console.warn('Customer name lookup error:', e.message);
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setNameSuggestions([]);
+      setShowNameDropdown(false);
+    }
+  }, [custFirstName, selectedCustomerId]);
 
   // Customer selected from suggestions dropdown
   const handleSelectCustomer = (c) => {
@@ -215,9 +309,27 @@ export default function CreateOrder() {
     setCustMobile(c.mobile || '');
     setCustTelephone(c.landline || '');
     setCustEmail(c.email || '');
+    setCustType(c.customer_type || 'Normal');
     if (c.delivery_address) {
       setDeliveryAddress(c.delivery_address);
     }
+    setShowMobileDropdown(false);
+    setShowNameDropdown(false);
+  };
+
+  // Clear all auto-filled customer fields in one click
+  const handleClearCustomer = () => {
+    setSelectedCustomerId(null);
+    setCustTitle('Mr');
+    setCustFirstName('');
+    setCustMobile('');
+    setCustTelephone('');
+    setCustEmail('');
+    setCustType('Normal');
+    setDeliveryAddress('');
+    setNameSuggestions([]);
+    setMobileSuggestions([]);
+    setShowNameDropdown(false);
     setShowMobileDropdown(false);
   };
 
@@ -227,18 +339,24 @@ export default function CreateOrder() {
       if (mobileInputRef.current && !mobileInputRef.current.contains(e.target)) {
         setShowMobileDropdown(false);
       }
+      if (nameInputRef.current && !nameInputRef.current.contains(e.target)) {
+        setShowNameDropdown(false);
+      }
+      if (productInputRef.current && !productInputRef.current.contains(e.target)) {
+        setShowProductDropdown(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   // ========================================================
-  // ADD PRODUCT TO ORDER ITEMS LIST
+  // ADD OR UPDATE PRODUCT IN ORDER ITEMS LIST
   // ========================================================
   const handleAddProduct = () => {
     setFeedback(null);
     if (!itemProductId || itemProductId === '0') {
-      setFeedback({ type: 'danger', message: 'Please select a valid Product before adding.' });
+      setFeedback({ type: 'danger', message: 'Please search and select a valid Product before adding.' });
       return;
     }
 
@@ -263,34 +381,59 @@ export default function CreateOrder() {
     const itemTotal = Number((qtyNum * priceNum).toFixed(2));
 
     const newItem = {
-      temp_id: Date.now() + Math.random(),
+      temp_id: editingItemId || (Date.now() + Math.random()),
       product_id: prd.product_id,
+      main_cat_id: prd.main_cat_id,
+      sub_cat_id: prd.sub_cat_id,
       product_name: prd.product_name,
       quantity: qtyNum,
       unit_price: priceNum,
       total_price: itemTotal,
       description: itemDescription.trim(),
       greeting_occasion: itemGreeting1 !== 'None' ? itemGreeting1 : null,
-      greeting_milestone: itemGreeting2 !== 'None' ? itemGreeting2 : null,
+      greeting_milestone: (itemGreeting2 && itemGreeting2.trim() && itemGreeting2.trim() !== 'None') ? itemGreeting2.trim() : null,
       greeting_icing_text: itemDescription.trim() || null,
       greeting_info2: itemGreetingInfo2.trim() || null,
       status: itemStatus || 'Pending'
     };
 
-    setOrderItems(prev => [...prev, newItem]);
+    if (editingItemId) {
+      setOrderItems(prev => prev.map(it => it.temp_id === editingItemId ? newItem : it));
+      setEditingItemId(null);
+    } else {
+      setOrderItems(prev => [...prev, newItem]);
+    }
 
-    // Reset item builder for next product
-    setItemDescription('');
-    setItemGreeting1('None');
-    setItemGreeting2('None');
-    setItemGreetingInfo2('');
-    setItemQty(1);
-    // Keep category selection for rapid multi-item entry
+    // Clear order information form for next product
+    handleClearOrderInfo();
+  };
+
+  // Load Item from Cart back into Form for Editing
+  const handleEditItem = (item) => {
+    const prd = allProducts.find(p => String(p.product_id) === String(item.product_id));
+    setEditingItemId(item.temp_id);
+    setItemMainCatId(prd?.main_cat_id ? String(prd.main_cat_id) : (item.main_cat_id ? String(item.main_cat_id) : ''));
+    setItemSubCatId(prd?.sub_cat_id ? String(prd.sub_cat_id) : (item.sub_cat_id ? String(item.sub_cat_id) : ''));
+    setItemProductId(String(item.product_id));
+    setProductSearchQuery(prd ? `${prd.product_name}${prd.net_weight ? ` (${prd.net_weight})` : ''}` : item.product_name);
+    setItemPrice(Number(item.unit_price).toFixed(2));
+    setItemQty(item.quantity);
+    setItemDescription(item.description || '');
+    setItemGreeting1(item.greeting_occasion || 'None');
+    setItemGreeting2(item.greeting_milestone || '');
+    setItemGreetingInfo2(item.greeting_info2 || '');
+    setItemStatus(item.status || 'Pending');
+    setShowProductDropdown(false);
+    setFeedback(null);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Remove Item from Cart
   const handleRemoveItem = (tempId) => {
     setOrderItems(prev => prev.filter(item => item.temp_id !== tempId));
+    if (editingItemId === tempId) {
+      handleClearOrderInfo();
+    }
   };
 
   // ========================================================
@@ -346,7 +489,8 @@ export default function CreateOrder() {
           mobile: custMobile.trim(),
           telephone: custTelephone.trim(),
           email: custEmail.trim() || null,
-          delivery_address: deliveryAddress.trim()
+          delivery_address: deliveryAddress.trim(),
+          customer_type: custType
         },
         ordered_by: user?.user_name || 'Admin',
         delivery_date: deliveryDate,
@@ -400,22 +544,14 @@ export default function CreateOrder() {
   // Reset entire form
   const handleReset = () => {
     setOrderItems([]);
-    setItemMainCatId('');
-    setItemSubCatId('');
-    setItemProductId('');
-    setItemPrice('');
-    setItemQty(1);
-    setItemDescription('');
-    setItemGreeting1('None');
-    setItemGreeting2('None');
-    setItemGreetingInfo2('');
-    setItemStatus('Pending');
+    handleClearOrderInfo();
 
     setCustTitle('Mr');
     setCustFirstName('');
     setCustMobile('');
     setCustTelephone('');
     setCustEmail('');
+    setCustType('Normal');
     setDeliveryAddress('');
     setSelectedCustomerId(null);
     setDeliveryDate(tomorrowStr);
@@ -490,7 +626,7 @@ export default function CreateOrder() {
             </label>
             <select
               value={itemMainCatId}
-              onChange={(e) => setItemMainCatId(e.target.value)}
+              onChange={(e) => handleMainCatChange(e.target.value)}
               className="field-select"
               disabled={loadingCatalog}
             >
@@ -508,7 +644,7 @@ export default function CreateOrder() {
             <label className="field-label">Sub-Product-Type</label>
             <select
               value={itemSubCatId}
-              onChange={(e) => setItemSubCatId(e.target.value)}
+              onChange={(e) => handleSubCatChange(e.target.value)}
               className="field-select"
               disabled={!itemMainCatId || filteredSubCategories.length === 0}
             >
@@ -525,28 +661,78 @@ export default function CreateOrder() {
             </select>
           </div>
 
-          {/* 3. Product */}
-          <div className="form-field-group">
+          {/* 3. Product (Searchable Autocomplete with Auto-fill Category & Clear Button) */}
+          <div className="form-field-group autocomplete-wrapper" ref={productInputRef}>
             <label className="field-label">
               Product<span className="required-star">*</span>
             </label>
-            <select
-              value={itemProductId}
-              onChange={(e) => setItemProductId(e.target.value)}
-              className="field-select"
-              disabled={!itemMainCatId || filteredProducts.length === 0}
-            >
-              <option value="">
-                {!itemMainCatId 
-                  ? 'Select M-Product Type First' 
-                  : (filteredProducts.length === 0 ? 'No Products Found' : 'Select Product Type')}
-              </option>
-              {filteredProducts.map(p => (
-                <option key={p.product_id} value={p.product_id}>
-                  {p.product_name} {p.net_weight ? `(${p.net_weight})` : ''} - Rs. {Number(p.unit_price).toFixed(0)}
-                </option>
-              ))}
-            </select>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+              <input
+                type="text"
+                value={productSearchQuery}
+                onChange={(e) => {
+                  setProductSearchQuery(e.target.value);
+                  setItemProductId('');
+                  setItemPrice('');
+                  setShowProductDropdown(true);
+                }}
+                onFocus={() => setShowProductDropdown(true)}
+                placeholder={loadingCatalog ? 'Loading Products...' : 'Search product by name or code...'}
+                className="field-input"
+                style={{ width: '100%', paddingRight: (itemProductId || productSearchQuery || itemMainCatId) ? '34px' : undefined }}
+                autoComplete="off"
+                disabled={loadingCatalog}
+              />
+              {(itemProductId || productSearchQuery || itemMainCatId) && (
+                <button
+                  type="button"
+                  onClick={handleClearOrderInfo}
+                  title="Clear selected product & reset all order info fields"
+                  aria-label="Clear product"
+                  style={{
+                    position: 'absolute',
+                    right: '8px',
+                    width: '22px',
+                    height: '22px',
+                    borderRadius: '50%',
+                    border: 'none',
+                    backgroundColor: '#fee2e2',
+                    color: '#dc2626',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    padding: 0
+                  }}
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
+            {showProductDropdown && (
+              <div className="autocomplete-dropdown" style={{ maxHeight: '260px', overflowY: 'auto' }}>
+                {productSuggestions.length === 0 ? (
+                  <div style={{ padding: '10px 14px', fontSize: '13px', color: '#64748b' }}>
+                    No matching products found.
+                  </div>
+                ) : (
+                  productSuggestions.map(p => (
+                    <div
+                      key={p.product_id}
+                      className="autocomplete-item"
+                      onClick={() => handleSelectProduct(p)}
+                    >
+                      <span className="autocomplete-item-name">
+                        {p.product_name} {p.net_weight ? `(${p.net_weight})` : ''}
+                      </span>
+                      <span className="autocomplete-item-mobile">
+                        Rs. {Number(p.unit_price).toFixed(0)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* 4. Price */}
@@ -591,53 +777,81 @@ export default function CreateOrder() {
             />
           </div>
 
-          {/* Greetings 1 (Occasion) */}
+          {/* Greetings 1 (Occasion - Loaded from dbo.Greetings table) */}
           <div className="form-field-group">
-            <label className="field-label">
-              Greetings <span className="required-star">*</span>
-            </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+              <label className="field-label" style={{ marginBottom: 0 }}>
+                Greetings <span className="required-star">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setGreetingModalError('');
+                  setShowGreetingsModal(true);
+                }}
+                title="Add or Manage Greeting Options in Database"
+                style={{
+                  background: '#e0f2fe',
+                  color: '#0284c7',
+                  border: '1px solid #bae6fd',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  padding: '2px 7px',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px'
+                }}
+              >
+                <Plus size={11} />
+                <span>Manage</span>
+              </button>
+            </div>
             <select
               value={itemGreeting1}
               onChange={(e) => setItemGreeting1(e.target.value)}
               className="field-select"
             >
               <option value="None">None</option>
-              <option value="Happy Birthday">Happy Birthday</option>
-              <option value="Happy Anniversary">Happy Anniversary</option>
-              <option value="Congratulations">Congratulations</option>
-              <option value="Best Wishes">Best Wishes</option>
-              <option value="Happy Wedding Day">Happy Wedding Day</option>
-              <option value="Get Well Soon">Get Well Soon</option>
-              <option value="Bon Voyage">Bon Voyage</option>
+              {greetingsList.map(g => (
+                <option key={g.greeting_id} value={g.greeting_text}>
+                  {g.greeting_text}
+                </option>
+              ))}
             </select>
           </div>
 
-          {/* Greetings 2 (Milestone / Age) */}
+          {/* Greetings 2 (Milestone / Number - Supports Manual Typing + Preset Suggestions) */}
           <div className="form-field-group">
             <label className="field-label">
-              Greetings <span className="required-star">*</span>
+              Greetings (Number / Milestone)
             </label>
-            <select
+            <input
+              type="text"
+              list="greeting-milestone-options"
               value={itemGreeting2}
               onChange={(e) => setItemGreeting2(e.target.value)}
-              className="field-select"
-            >
-              <option value="None">None</option>
-              <option value="1st">1st</option>
-              <option value="16th">16th</option>
-              <option value="18th">18th</option>
-              <option value="21st">21st</option>
-              <option value="25th">25th</option>
-              <option value="30th">30th</option>
-              <option value="40th">40th</option>
-              <option value="50th">50th</option>
-              <option value="60th">60th</option>
-              <option value="70th">70th</option>
-              <option value="75th">75th</option>
-              <option value="80th">80th</option>
-              <option value="90th">90th</option>
-              <option value="100th">100th</option>
-            </select>
+              placeholder="None or type e.g. 24th"
+              className="field-input"
+              autoComplete="off"
+            />
+            <datalist id="greeting-milestone-options">
+              <option value="1st" />
+              <option value="16th" />
+              <option value="18th" />
+              <option value="21st" />
+              <option value="25th" />
+              <option value="30th" />
+              <option value="40th" />
+              <option value="50th" />
+              <option value="60th" />
+              <option value="70th" />
+              <option value="75th" />
+              <option value="80th" />
+              <option value="90th" />
+              <option value="100th" />
+            </datalist>
           </div>
 
           {/* Greetings info2 (Icing text) */}
@@ -669,17 +883,40 @@ export default function CreateOrder() {
           </div>
         </div>
 
-        {/* Row 3: Add Product Button */}
-        <div style={{ textAlign: 'center', marginTop: '10px' }}>
+        {/* Row 3: Add / Update Product Button (Theme Blue) */}
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '10px' }}>
           <button
             type="button"
             onClick={handleAddProduct}
             className="btn btn-primary"
-            style={{ minWidth: '160px', padding: '10px 24px' }}
+            style={{
+              minWidth: '175px',
+              padding: '10px 24px',
+              background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+              borderColor: '#0284c7',
+              color: '#ffffff',
+              boxShadow: '0 2px 8px rgba(2, 132, 199, 0.28)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '7px',
+              fontWeight: 700
+            }}
           >
-            <Plus size={16} />
-            <span>Add Product</span>
+            {editingItemId ? <Check size={16} /> : <Plus size={16} />}
+            <span>{editingItemId ? 'Update Product' : 'Add Product'}</span>
           </button>
+
+          {editingItemId && (
+            <button
+              type="button"
+              onClick={handleClearOrderInfo}
+              className="btn btn-secondary"
+              style={{ padding: '10px 20px', fontWeight: 600 }}
+            >
+              Cancel Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -696,7 +933,7 @@ export default function CreateOrder() {
                 <th style={{ minWidth: '80px', textAlign: 'center' }}>Qty</th>
                 <th style={{ minWidth: '120px', textAlign: 'right' }}>Unit Price</th>
                 <th style={{ minWidth: '130px', textAlign: 'right' }}>Total</th>
-                <th style={{ minWidth: '90px', textAlign: 'center' }}>Actions</th>
+                <th style={{ minWidth: '115px', textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -708,7 +945,10 @@ export default function CreateOrder() {
                 </tr>
               ) : (
                 orderItems.map((item, idx) => (
-                  <tr key={item.temp_id}>
+                  <tr
+                    key={item.temp_id}
+                    style={editingItemId === item.temp_id ? { backgroundColor: '#eff6ff' } : undefined}
+                  >
                     <td className="cat-name-cell">
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ color: '#258be0', fontWeight: '700' }}>#{idx + 1}</span>
@@ -735,14 +975,29 @@ export default function CreateOrder() {
                       {Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(item.temp_id)}
-                        className="btn-cat-action btn-cat-delete"
-                        title="Remove Item"
-                      >
-                        <Trash2 size={15} />
-                      </button>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleEditItem(item)}
+                          className="btn-cat-action"
+                          title="Edit Item Details"
+                          style={{
+                            backgroundColor: '#e0f2fe',
+                            color: '#0284c7',
+                            border: '1px solid #bae6fd'
+                          }}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.temp_id)}
+                          className="btn-cat-action btn-cat-delete"
+                          title="Remove Item"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -788,24 +1043,78 @@ export default function CreateOrder() {
                 <option value="Mr">Mr</option>
                 <option value="Mrs">Mrs</option>
                 <option value="Miss">Miss</option>
+                <option value="M/S">M/S</option>
                 <option value="Dr">Dr</option>
                 <option value="Rev">Rev</option>
+                <option value="Co.">Co. (Company)</option>
               </select>
             </div>
 
-            {/* First Name* */}
-            <div className="form-field-group">
+            {/* First Name* (With Live Search Autocomplete) */}
+            <div className="form-field-group autocomplete-wrapper" ref={nameInputRef}>
               <label className="field-label">
                 First Name<span className="required-star">*</span>
               </label>
-              <input
-                type="text"
-                value={custFirstName}
-                onChange={(e) => setCustFirstName(e.target.value)}
-                placeholder="Enter customer name"
-                className="field-input"
-                required
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={custFirstName}
+                  onChange={(e) => {
+                    setCustFirstName(e.target.value);
+                    setSelectedCustomerId(null);
+                  }}
+                  onFocus={() => {
+                    if (nameSuggestions.length > 0 && !selectedCustomerId) setShowNameDropdown(true);
+                  }}
+                  placeholder="Enter customer name"
+                  className="field-input"
+                  style={{ width: '100%', paddingRight: selectedCustomerId ? '34px' : undefined }}
+                  autoComplete="off"
+                  required
+                />
+                {selectedCustomerId && (
+                  <button
+                    type="button"
+                    onClick={handleClearCustomer}
+                    title="Clear selected customer & reset all customer fields"
+                    aria-label="Clear selected customer"
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
+              {/* Name Autocomplete Dropdown */}
+              {showNameDropdown && nameSuggestions.length > 0 && (
+                <div className="autocomplete-dropdown">
+                  {nameSuggestions.map(c => (
+                    <div
+                      key={c.customer_id}
+                      className="autocomplete-item"
+                      onClick={() => handleSelectCustomer(c)}
+                    >
+                      <span className="autocomplete-item-name">
+                        {c.title ? `${c.title} ` : ''}{c.first_name}{c.last_name ? ` ${c.last_name}` : ''}
+                      </span>
+                      <span className="autocomplete-item-mobile">{c.mobile}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Mobile* (With Live Search Autocomplete) */}
@@ -813,20 +1122,48 @@ export default function CreateOrder() {
               <label className="field-label">
                 Mobile<span className="required-star">*</span>
               </label>
-              <input
-                type="text"
-                value={custMobile}
-                onChange={(e) => {
-                  setCustMobile(e.target.value);
-                  setSelectedCustomerId(null);
-                }}
-                onFocus={() => {
-                  if (mobileSuggestions.length > 0) setShowMobileDropdown(true);
-                }}
-                placeholder="07XXXXXXXX"
-                className="field-input"
-                required
-              />
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={custMobile}
+                  onChange={(e) => {
+                    setCustMobile(e.target.value);
+                    setSelectedCustomerId(null);
+                  }}
+                  onFocus={() => {
+                    if (mobileSuggestions.length > 0 && !selectedCustomerId) setShowMobileDropdown(true);
+                  }}
+                  placeholder="07XXXXXXXX"
+                  className="field-input"
+                  style={{ width: '100%', paddingRight: selectedCustomerId ? '34px' : undefined }}
+                  required
+                />
+                {selectedCustomerId && (
+                  <button
+                    type="button"
+                    onClick={handleClearCustomer}
+                    title="Clear selected customer & reset all customer fields"
+                    aria-label="Clear selected customer"
+                    style={{
+                      position: 'absolute',
+                      right: '8px',
+                      width: '22px',
+                      height: '22px',
+                      borderRadius: '50%',
+                      border: 'none',
+                      backgroundColor: '#fee2e2',
+                      color: '#dc2626',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: 0
+                    }}
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
               {/* Autocomplete Dropdown */}
               {showMobileDropdown && mobileSuggestions.length > 0 && (
                 <div className="autocomplete-dropdown">
@@ -867,20 +1204,9 @@ export default function CreateOrder() {
                 className="field-input"
               />
             </div>
-
-            {/* Ordered By (Readonly) */}
-            <div className="form-field-group">
-              <label className="field-label">Ordered By</label>
-              <input
-                type="text"
-                value={user?.user_name || user?.full_name || 'Admin'}
-                readOnly
-                className="field-input field-input-readonly"
-              />
-            </div>
           </div>
 
-          {/* Row 2: Date of Delivery, Time, Delivery Address */}
+          {/* Row 2: Date of Delivery, Time, Customer Type, Delivery Address */}
           <div className="order-customer-grid-row2">
             {/* Date of Delivery */}
             <div className="form-field-group">
@@ -911,6 +1237,19 @@ export default function CreateOrder() {
                 onChange={(e) => setDeliveryTime(e.target.value)}
                 className="field-input"
               />
+            </div>
+
+            {/* Customer Type */}
+            <div className="form-field-group">
+              <label className="field-label">Customer Type</label>
+              <select
+                value={custType}
+                onChange={(e) => setCustType(e.target.value)}
+                className="field-select"
+              >
+                <option value="Normal">Normal</option>
+                <option value="Credit">Credit</option>
+              </select>
             </div>
 
             {/* Delivery Address */}
@@ -1084,21 +1423,40 @@ export default function CreateOrder() {
             </div>
           </div>
 
-          {/* Row 2: Action Buttons (Submit & Reset) */}
+          {/* Row 2: Action Buttons (Submit & Reset - Theme Matched) */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
             <button
               type="submit"
               disabled={saving}
               className="btn btn-primary"
-              style={{ minWidth: '140px', padding: '10px 24px' }}
+              style={{
+                minWidth: '155px',
+                padding: '10px 26px',
+                background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                borderColor: '#0284c7',
+                color: '#ffffff',
+                boxShadow: '0 2px 8px rgba(2, 132, 199, 0.28)',
+                fontWeight: 700
+              }}
             >
               {saving ? 'Creating Order...' : 'Submit'}
             </button>
             <button
               type="button"
               onClick={handleReset}
-              className="btn btn-teal"
-              style={{ minWidth: '140px', padding: '10px 24px' }}
+              className="btn btn-secondary"
+              style={{
+                minWidth: '140px',
+                padding: '10px 24px',
+                backgroundColor: '#f1f5f9',
+                border: '1px solid #cbd5e1',
+                color: '#334155',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
             >
               <RotateCcw size={15} />
               <span>Reset</span>
@@ -1249,6 +1607,156 @@ export default function CreateOrder() {
                 <FileText size={16} />
                 <span>Manage Orders</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================
+          MANAGE GREETINGS MODAL (Add / Remove dbo.Greetings)
+          ======================================================== */}
+      {showGreetingsModal && (
+        <div
+          className="modal-overlay"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowGreetingsModal(false);
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              backgroundColor: '#ffffff',
+              borderRadius: '12px',
+              width: '480px',
+              maxWidth: '94vw',
+              padding: '24px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  Manage Greetings List
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12.5px', color: '#64748b' }}>
+                  Add or remove custom greeting values stored in database
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGreetingsModal(false)}
+                style={{
+                  border: 'none',
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  borderRadius: '50%',
+                  width: '30px',
+                  height: '30px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {greetingModalError && (
+              <div style={{
+                background: '#fee2e2',
+                color: '#9f1239',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                marginBottom: '12px'
+              }}>
+                {greetingModalError}
+              </div>
+            )}
+
+            <form onSubmit={handleAddGreetingOption} style={{ display: 'flex', gap: '8px', marginBottom: '16px' }}>
+              <input
+                type="text"
+                value={newGreetingText}
+                onChange={(e) => setNewGreetingText(e.target.value)}
+                placeholder="e.g. Happy Graduation, Welcome Home..."
+                className="field-input"
+                style={{ flex: 1 }}
+                disabled={savingGreeting}
+              />
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={savingGreeting}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                  borderColor: '#0284c7',
+                  color: '#ffffff',
+                  padding: '8px 16px',
+                  fontWeight: 700,
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                {savingGreeting ? 'Saving...' : '+ Add'}
+              </button>
+            </form>
+
+            <div style={{
+              maxHeight: '260px',
+              overflowY: 'auto',
+              border: '1px solid #e2e8f0',
+              borderRadius: '8px'
+            }}>
+              {greetingsList.length === 0 ? (
+                <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                  No greetings saved yet.
+                </div>
+              ) : (
+                greetingsList.map((g, idx) => (
+                  <div
+                    key={g.greeting_id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '10px 14px',
+                      borderBottom: idx < greetingsList.length - 1 ? '1px solid #f1f5f9' : 'none',
+                      fontSize: '13.5px'
+                    }}
+                  >
+                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{g.greeting_text}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteGreetingOption(g.greeting_id, g.greeting_text)}
+                      title="Delete Greeting"
+                      style={{
+                        border: 'none',
+                        background: '#fee2e2',
+                        color: '#dc2626',
+                        borderRadius: '6px',
+                        padding: '4px 8px',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center'
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

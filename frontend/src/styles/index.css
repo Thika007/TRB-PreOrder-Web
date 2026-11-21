@@ -2286,14 +2286,14 @@ button, input, select, textarea {
 /* Card 3: Fill Customer Information Grids */
 .order-customer-grid-row1 {
   display: grid;
-  grid-template-columns: 110px 1.2fr 1.2fr 1fr 1.3fr 1fr;
+  grid-template-columns: 110px 2.2fr 1.2fr 1fr 1.3fr;
   gap: 16px;
   margin-bottom: 16px;
 }
 
 .order-customer-grid-row2 {
   display: grid;
-  grid-template-columns: 1.1fr 1fr 2fr;
+  grid-template-columns: 1fr 0.9fr 1fr 2fr;
   gap: 16px;
   margin-bottom: 8px;
 }

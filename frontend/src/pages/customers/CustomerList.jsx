@@ -51,6 +51,7 @@ export default function CustomerList() {
             <thead>
               <tr>
                 <th>Customer Name</th>
+                <th>Customer Type</th>
                 <th>Mobile Number</th>
                 <th>Landline</th>
                 <th>Delivery Address</th>
@@ -60,7 +61,7 @@ export default function CustomerList() {
             <tbody>
               {customers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                  <td colSpan="6" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
                     No customer records found.
                   </td>
                 </tr>
@@ -69,6 +70,19 @@ export default function CustomerList() {
                   <tr key={c.customer_id}>
                     <td style={{ fontWeight: 700, color: '#0f172a' }}>
                       {c.title} {c.first_name} {c.last_name || ''}
+                    </td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        backgroundColor: c.customer_type === 'Credit' ? '#fef3c7' : '#f1f5f9',
+                        color: c.customer_type === 'Credit' ? '#b45309' : '#475569'
+                      }}>
+                        {c.customer_type || 'Normal'}
+                      </span>
                     </td>
                     <td style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, color: '#d97706' }}>
                       {c.mobile}

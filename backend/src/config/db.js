@@ -196,7 +196,7 @@ async function getPool() {
 
         poolPromise = new sql.ConnectionPool(activeConfig)
             .connect()
-            .then(pool => {
+            .then(async pool => {
                 console.log(`====================================================`);
                 console.log(`✅ [MSSQL Pool] CONNECTED SUCCESSFULLY!`);
                 console.log(`   Database : ${activeConfig.database}`);
@@ -204,6 +204,37 @@ async function getPool() {
                 console.log(`   User     : ${activeConfig.user}`);
                 console.log(`====================================================`);
                 
+                // Auto-migrate: Ensure customer_type column & Greetings table exist
+                try {
+                    await pool.request().query(`
+                        IF OBJECT_ID('dbo.Customers', 'U') IS NOT NULL AND COL_LENGTH('dbo.Customers', 'customer_type') IS NULL
+                        BEGIN
+                            ALTER TABLE dbo.Customers ADD customer_type VARCHAR(20) NOT NULL CONSTRAINT DF_Customers_CustomerType DEFAULT 'Normal';
+                        END
+
+                        IF OBJECT_ID('dbo.Greetings', 'U') IS NULL
+                        BEGIN
+                            CREATE TABLE dbo.Greetings (
+                                greeting_id   INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                                greeting_text NVARCHAR(150) NOT NULL UNIQUE,
+                                is_active     BIT NOT NULL DEFAULT 1,
+                                created_at    DATETIME NOT NULL DEFAULT GETDATE()
+                            );
+
+                            INSERT INTO dbo.Greetings (greeting_text) VALUES
+                            (N'Happy Birthday'),
+                            (N'Happy Anniversary'),
+                            (N'Congratulations'),
+                            (N'Best Wishes'),
+                            (N'Happy Wedding Day'),
+                            (N'Get Well Soon'),
+                            (N'Bon Voyage');
+                        END
+                    `);
+                } catch (migErr) {
+                    console.warn('⚠️ [Auto-Migration] Schema check skipped:', migErr.message);
+                }
+
                 lastConnectionDiagnostics.status = 'connected';
                 lastConnectionDiagnostics.error = null;
                 lastConnectionDiagnostics.diagnosis = null;

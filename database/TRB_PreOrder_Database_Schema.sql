@@ -53,6 +53,7 @@ CREATE TABLE dbo.Customers (
     delivery_address    NVARCHAR(500) NULL,
     email               VARCHAR(100) NULL,
     city                NVARCHAR(100) NULL DEFAULT N'Colombo',
+    customer_type       VARCHAR(20) NOT NULL DEFAULT 'Normal', -- 'Normal', 'Credit'
     notes               NVARCHAR(500) NULL,
     created_at          DATETIME NOT NULL DEFAULT GETDATE(),
     updated_at          DATETIME NOT NULL DEFAULT GETDATE()
@@ -297,6 +298,30 @@ CREATE TABLE dbo.StoreSettings (
     setting_value       NVARCHAR(MAX) NOT NULL,
     description         NVARCHAR(200) NULL
 );
+GO
+
+-- ============================================================================
+-- 11. GREETINGS MASTER TABLE (Customizable Cake Greeting Options)
+-- ============================================================================
+IF OBJECT_ID('dbo.Greetings', 'U') IS NOT NULL DROP TABLE dbo.Greetings;
+GO
+
+CREATE TABLE dbo.Greetings (
+    greeting_id         INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    greeting_text       NVARCHAR(150) NOT NULL UNIQUE,
+    is_active           BIT NOT NULL DEFAULT 1,
+    created_at          DATETIME NOT NULL DEFAULT GETDATE()
+);
+GO
+
+INSERT INTO dbo.Greetings (greeting_text) VALUES
+(N'Happy Birthday'),
+(N'Happy Anniversary'),
+(N'Congratulations'),
+(N'Best Wishes'),
+(N'Happy Wedding Day'),
+(N'Get Well Soon'),
+(N'Bon Voyage');
 GO
 
 -- ============================================================================

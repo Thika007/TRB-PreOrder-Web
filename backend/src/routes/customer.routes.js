@@ -23,7 +23,8 @@ router.get('/search', async (req, res) => {
                 landline, 
                 delivery_address, 
                 email, 
-                city
+                city,
+                ISNULL(customer_type, 'Normal') AS customer_type
             FROM dbo.Customers
             WHERE mobile LIKE @searchParam + '%' 
                OR mobile LIKE '%' + @searchParam + '%'
@@ -79,6 +80,7 @@ router.get('/', async (req, res) => {
                 landline, 
                 delivery_address, 
                 email, 
+                ISNULL(customer_type, 'Normal') AS customer_type,
                 created_at
             FROM dbo.Customers
             ${whereClause}
@@ -111,7 +113,7 @@ router.get('/', async (req, res) => {
 // =========================================================================
 router.post('/', async (req, res) => {
     try {
-        const { title, first_name, last_name, mobile, landline, delivery_address, email, notes } = req.body;
+        const { title, first_name, last_name, mobile, landline, delivery_address, email, notes, customer_type } = req.body;
 
         if (!first_name || !mobile) {
             return res.status(400).json({ success: false, error: 'First Name and Mobile number are required.' });
@@ -131,9 +133,9 @@ router.post('/', async (req, res) => {
         }
 
         const insertQuery = `
-            INSERT INTO dbo.Customers (title, first_name, last_name, mobile, landline, delivery_address, email, notes)
-            OUTPUT INSERTED.customer_id, INSERTED.first_name, INSERTED.mobile
-            VALUES (@title, @first_name, @last_name, @mobile, @landline, @delivery_address, @email, @notes)
+            INSERT INTO dbo.Customers (title, first_name, last_name, mobile, landline, delivery_address, email, notes, customer_type)
+            OUTPUT INSERTED.customer_id, INSERTED.first_name, INSERTED.mobile, INSERTED.customer_type
+            VALUES (@title, @first_name, @last_name, @mobile, @landline, @delivery_address, @email, @notes, @customer_type)
         `;
 
         const params = [
@@ -144,7 +146,8 @@ router.post('/', async (req, res) => {
             { name: 'landline', type: sql.VarChar(20), value: landline ? landline.trim() : null },
             { name: 'delivery_address', type: sql.NVarChar(500), value: delivery_address || null },
             { name: 'email', type: sql.VarChar(100), value: email || null },
-            { name: 'notes', type: sql.NVarChar(500), value: notes || null }
+            { name: 'notes', type: sql.NVarChar(500), value: notes || null },
+            { name: 'customer_type', type: sql.VarChar(20), value: customer_type || 'Normal' }
         ];
 
         const insertRes = await executeQuery(insertQuery, params);
